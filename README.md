@@ -36,7 +36,7 @@ npm start
 
 For development mode (auto-reload):
 
-npm run dev
+npm run server
 
 Health Check
 
