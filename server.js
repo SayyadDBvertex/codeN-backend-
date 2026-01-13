@@ -4,6 +4,11 @@ import path from 'path';
 import connectDB from './config/db.js';
 import adminRoutes from './routes/admin.routes.js';
 import locationRoutes from './routes/location.route.js';
+import courseRoutes from './routes/Course/course.routes.js';
+import subjectRoutes from './routes/Subject/subject.routes.js';
+import subSubjectRoutes from './routes/Sub-subject/subSubject.routes.js';
+import chapterRoutes from './routes/Chapter/chapter.routes.js';
+import mcqRoutes from './routes/MCQs/mcq.routes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
 // Environment variables load karo
@@ -18,7 +23,6 @@ connectDB();
 // static uploads
 app.use('/uploads', express.static(path.resolve('uploads')));
 
-
 // Middleware
 app.use(express.json()); // JSON body parser
 app.use(express.urlencoded({ extended: true })); // URL encoded body parser
@@ -26,6 +30,11 @@ app.use(express.urlencoded({ extended: true })); // URL encoded body parser
 // Routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/location', locationRoutes);
+app.use('/api/admin/courses', courseRoutes);
+app.use('/api/admin/subjects', subjectRoutes);
+app.use('/api/admin/sub-subjects', subSubjectRoutes);
+app.use('/api/admin/chapters', chapterRoutes);
+app.use('/api/admin/mcqs', mcqRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
