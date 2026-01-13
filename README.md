@@ -1,55 +1,51 @@
-# CodeN Backend
+CodeN Backend
 
-Node.js aur Express based backend API with admin authentication.
+Node.js and Express-based backend API with admin authentication.
 
-## Features
+Features
 
-- ✅ MongoDB with Mongoose
-- ✅ JWT-based authentication
-- ✅ Admin role only
-- ✅ Password hashing with bcrypt
-- ✅ Clean folder structure
-- ✅ Error handling middleware
-- ✅ Input validation
+✅ MongoDB with Mongoose
 
-## Installation
+✅ JWT-based authentication
 
-1. Dependencies install karo:
+✅ Admin role only
 
-```bash
+✅ Password hashing using bcrypt
+
+✅ Clean folder structure
+
+✅ Global error handling middleware
+
+✅ Input validation
+
+Installation
+
+Install dependencies:
+
 npm install
-```
 
-2. `.env` file create karo aur `.env.example` ko copy karo:
 
-```bash
+Create a .env file by copying .env.example:
+
 copy .env.example .env
-```
 
-3. `.env` file mein apne MongoDB URI aur JWT secret set karo
 
-4. Server start karo:
+Set your MongoDB URI and JWT secret inside the .env file.
 
-```bash
+Start the server:
+
 npm start
-```
 
-Development mode ke liye (auto-reload):
 
-```bash
+For development mode (auto-reload):
+
 npm run dev
-```
 
+Health Check
 
+GET /api/health
 
-
-### Health Check
-
-- **GET** `/api/health`
-
-## Project Structure
-
-```
+Project Structure
 CodeN-backend/
 ├── config/
 │   ├── db.js                 # MongoDB connection
@@ -79,24 +75,12 @@ CodeN-backend/
 ├── server.js                 # Entry point
 ├── .env.example              # Environment variables example
 └── package.json
-```
 
-## Environment Variables
+Environment Variables
 
+Configured using the .env file.
 
-## Usage
+Usage
+Protected Routes
 
-### Protected Routes
-
-Protected routes ke liye `authMiddleware` aur `Authorization.middleware` use karo:
-
-
-```
-
-### Request Headers
-
-Protected routes ke liye header mein token bhejo:
-
-```
-
-```
+For protected routes, use authMiddleware and Authorization.middleware.
