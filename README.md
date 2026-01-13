@@ -98,5 +98,5 @@ Protected routes ke liye `authMiddleware` aur `Authorization.middleware` use kar
 Protected routes ke liye header mein token bhejo:
 
 ```
-Authorization: Bearer <your_jwt_token>
+
 ```
