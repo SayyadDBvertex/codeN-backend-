@@ -18,7 +18,6 @@ import cors from 'cors';
 
 // Environment variables load karo
 
-
 // Express app initialize karo
 const app = express();
 
@@ -66,7 +65,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Server start karo
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(
     `Server running in ${

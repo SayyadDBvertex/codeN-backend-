@@ -28,6 +28,7 @@ const testAttemptSchema = new mongoose.Schema(
     ],
 
     startedAt: Date,
+    endsAt: Date,
     submittedAt: Date,
     score: Number,
   },

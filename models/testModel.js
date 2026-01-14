@@ -44,14 +44,11 @@ const testSchema = new mongoose.Schema(
     },
 
     duration: {
-      type: Number, // minutes (only for regular)
+      type: Number,
       default: null,
     },
 
-    perQuestionTime: {
-      type: Number, // seconds (exam mode)
-      default: 60,
-    },
+
 
     marksPerQuestion: {
       type: Number,

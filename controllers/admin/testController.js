@@ -11,7 +11,6 @@ export const createTest = async (req, res) => {
       scopeType,
       testType,
       totalQuestions,
-      duration,
     } = req.body;
 
     let filter = {};
@@ -22,8 +21,10 @@ export const createTest = async (req, res) => {
 
     const count = await MCQ.countDocuments(filter);
     if (count < totalQuestions) {
-      return res.status(400).json({ message: 'Not enough MCQs for this test' });
+      return res.status(400).json({ message: 'Not enough MCQs' });
     }
+
+    const duration = testType === 'exam' ? totalQuestions : null;
 
     const test = await Test.create({
       courseId,
@@ -33,7 +34,7 @@ export const createTest = async (req, res) => {
       scopeType,
       testType,
       totalQuestions,
-      duration: testType === 'regular' ? duration : null,
+      duration,
     });
 
     res.status(201).json({ success: true, test });
