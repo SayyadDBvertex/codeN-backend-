@@ -1,5 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
+dotenv.config();
 import path from 'path';
 import connectDB from './config/db.js';
 import adminRoutes from './routes/admin.routes.js';
@@ -13,7 +14,7 @@ import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import cors from 'cors';
 
 // Environment variables load karo
-dotenv.config();
+
 
 // Express app initialize karo
 const app = express();
@@ -47,6 +48,13 @@ app.get('/', (req, res) => {
 });
 
 // 404 handler
+app.use((err, req, res, next) => {
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+  });
+});
+
 app.use(notFound);
 
 // Error handler middleware (sabse last mein)
