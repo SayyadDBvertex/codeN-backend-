@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import UserModel from '../models/userModel.js';
 import { sendFormEmail } from '../config/mail.js';
+import PageModel from '../models/pageModel.js';
 
 export const loginByGoogle = async (req, res, next) => {
     try {
@@ -33,7 +34,7 @@ export const loginByGoogle = async (req, res, next) => {
 
 
 
-const generateOtp = () =>
+const generateOtp = () =>{}
     Math.floor(100000 + Math.random() * 900000).toString();
 
 export const register = async (req, res, next) => {
@@ -46,15 +47,16 @@ export const register = async (req, res, next) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-
+        const otp = generateOtp();
         const user = await UserModel.create({
             name,
             email,
+            otp,
             password: hashedPassword,
             mobile, address, countryId, cityId, collegeId, admissionYear,
             signUpBy: 'email',
         });
-
+        await sendFormEmail(email, otp);
         res.status(201).json({
             message: 'User registered successfully',
             user,
@@ -133,10 +135,8 @@ export const resendOtp = async (req, res, next) => {
         const otp = generateOtp();
         user.otp = otp;
         user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-        await sendFormEmail(email,otp);
+        await sendFormEmail(email, otp);
         await user.save();
-
-        // TODO: send OTP via email
         console.log('Resent OTP:', otp);
 
         res.json({ message: 'OTP resent successfully' });
@@ -145,4 +145,82 @@ export const resendOtp = async (req, res, next) => {
     }
 };
 
+
+export const forgetPassword = async (req ,res,next) => {
+    const { email } = req.body;
+
+    try {
+        const user = await UserModel.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const otp = generateOtp();
+        user.otp = otp;
+        user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+        await sendFormEmail(email, otp);
+        await user.save();
+
+        res.status(200).json({ message: 'Email sent successfully' });
+    } catch (error) {
+       next(error)
+    }
+};
+
+
+
+export const changePassword = async (req, res, next) => {
+    const { email, otp, newPassword } = req.body;
+
+    try {
+        const user = await UserModel.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (!user.otp || user.otp !== otp || user.otpExpiresAt < new Date()) {
+            return res.status(400).json({ message: 'Invalid or expired OTP' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        user.otp = undefined;
+        user.otpExpiresAt = undefined;
+
+        await user.save();
+
+        res.status(200).json({ message: 'Password changed successfully' });
+    } catch (error) {
+        next(error); 
+    }
+};
+
+export const getSlugByQuery = async (req, res, next) => {
+    try {
+        const { slug } = req.query;
+
+        if (!slug) {
+            return res.status(400).json({
+                message: 'slug query parameter is required',
+            });
+        }
+
+        const page = await PageModel.findOne({
+            slug: String(slug),
+            isActive: true,
+        }).select('slug title content');
+
+        if (!page) {
+            return res.status(404).json({
+                message: 'Page not found',
+            });
+        }
+
+        res.status(200).json({
+            data: page,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
 
