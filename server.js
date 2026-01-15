@@ -6,6 +6,10 @@ import adminRoutes from './routes/admin.routes.js';
 import locationRoutes from './routes/location.route.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
+import { OAuth2Client } from 'google-auth-library';
+const CLIENT_ID = '407408718192.apps.googleusercontent.com';
+const client = new OAuth2Client(CLIENT_ID);
+
 // Environment variables load karo
 dotenv.config();
 
@@ -26,6 +30,46 @@ app.use(express.urlencoded({ extended: true })); // URL encoded body parser
 // Routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/location', locationRoutes);
+
+
+app.post('/api/google-login', async (req, res) => {
+    const { token } = req.body;
+
+    if (!token) {
+        return res.status(400).json({ message: "Token is required" });
+    }
+
+    try {
+        // Step: Google Token ko verify karna
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: CLIENT_ID, // Isse pakka hota hai ki token aapki hi app ke liye hai
+        });
+
+        const payload = ticket.getPayload();
+        
+        // User ki details jo Google se mili
+        const userInfo = {
+            googleId: payload['sub'],
+            email: payload['email'],
+            name: payload['name'],
+            picture: payload['picture']
+        };
+
+        console.log("User Verified:", userInfo);
+
+        // Yaha aap Database logic likh sakte hain (e.g., Save User to MongoDB)
+
+        res.status(200).json({
+            message: "Success",
+            user: userInfo
+        });
+
+    } catch (error) {
+        console.error("Verification Error:", error);
+        res.status(401).json({ message: "Invalid Token" });
+    }
+});
 
 // Health check route
 app.get('/api/health', (req, res) => {
