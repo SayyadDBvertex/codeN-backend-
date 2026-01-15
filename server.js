@@ -14,6 +14,7 @@ import bookmarkRoutes from './routes/bookmark.routes.js';
 import adminTestRoutes from './routes/admin/testRoutes.js';
 import userTestRoutes from './routes/user/testRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
+import userRouter from "./routes/user.routes.js";
 import cors from 'cors';
 
 import { OAuth2Client } from 'google-auth-library';
@@ -46,46 +47,10 @@ app.use('/api/admin/mcqs', mcqRoutes);
 app.use('/api/bookmarks', bookmarkRoutes);
 app.use('/api/admin/tests', adminTestRoutes);
 app.use('/api/tests', userTestRoutes);
+app.use('/api/user', userRouter);
 
 
-app.post('/api/google-login', async (req, res) => {
-    const { token } = req.body;
 
-    if (!token) {
-        return res.status(400).json({ message: "Token is required" });
-    }
-
-    try {
-        // Step: Google Token ko verify karna
-        const ticket = await client.verifyIdToken({
-            idToken: token,
-            audience: CLIENT_ID, // Isse pakka hota hai ki token aapki hi app ke liye hai
-        });
-
-        const payload = ticket.getPayload();
-        
-        // User ki details jo Google se mili
-        const userInfo = {
-            googleId: payload['sub'],
-            email: payload['email'],
-            name: payload['name'],
-            picture: payload['picture']
-        };
-
-        console.log("User Verified:", userInfo);
-
-        // Yaha aap Database logic likh sakte hain (e.g., Save User to MongoDB)
-
-        res.status(200).json({
-            message: "Success",
-            user: userInfo
-        });
-
-    } catch (error) {
-        console.error("Verification Error:", error);
-        res.status(401).json({ message: "Invalid Token" });
-    }
-});
 
 // Health check route
 app.get('/', (req, res) => {
