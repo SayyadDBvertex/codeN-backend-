@@ -9,6 +9,7 @@ import {
   deleteChapter,
   toggleChapterStatus,
 } from '../../controllers/Chapter/chapter.controller.js';
+import upload from '../../middleware/upload.js';
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ router.use(protect);
 router.use(authorize('admin'));
 
 // Create chapter
-router.post('/', createChapter);
+router.post('/', upload.single('image'), createChapter);
 
 // Get all chapters
 router.get('/', getAllChapters);
@@ -26,7 +27,7 @@ router.get('/', getAllChapters);
 router.get('/:id', getChapterById);
 
 // Update chapter
-router.patch('/:id', updateChapter);
+router.patch('/:id', upload.single('image'), updateChapter);
 
 // Delete chapter (soft delete)
 router.delete('/:id', deleteChapter);

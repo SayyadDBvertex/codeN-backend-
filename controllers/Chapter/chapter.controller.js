@@ -18,7 +18,6 @@ export const createChapter = async (req, res, next) => {
       status,
     } = req.body;
 
-    // Verify sub-subject exists
     const subSubject = await SubSubject.findById(subSubjectId);
     if (!subSubject) {
       return res.status(404).json({
@@ -35,6 +34,7 @@ export const createChapter = async (req, res, next) => {
       order: order || 0,
       isFreePreview: isFreePreview || false,
       status: status || 'active',
+      image: req.file ? `/uploads/admin-profile/${req.file.filename}` : null, // 👈 IMAGE SAVE
       createdBy: req.admin._id,
       updatedBy: req.admin._id,
     });
@@ -158,8 +158,13 @@ export const updateChapter = async (req, res, next) => {
     if (order !== undefined) chapter.order = order;
     if (isFreePreview !== undefined) chapter.isFreePreview = isFreePreview;
     if (status) chapter.status = status;
-    chapter.updatedBy = req.admin._id;
 
+    // ✅ IMAGE UPDATE (NEW)
+    if (req.file) {
+      chapter.image = `/uploads/chapter-image/${req.file.filename}`;
+    }
+
+    chapter.updatedBy = req.admin._id;
     await chapter.save();
 
     res.status(200).json({
