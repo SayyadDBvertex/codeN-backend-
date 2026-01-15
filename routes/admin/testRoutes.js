@@ -5,6 +5,7 @@ import {
   updateTest,
   deleteTest,
   publishTest,
+  unpublishTest,
 } from '../../controllers/admin/testController.js';
 import { protect } from '../../middleware/authMiddleware.js';
 
@@ -13,7 +14,9 @@ const router = express.Router();
 router.post('/', protect, createTest); // Create
 router.get('/', protect, getAllTests); // Table
 router.put('/:id', protect, updateTest); // Update
+
 router.delete('/:id', protect, deleteTest); // Delete
 router.patch('/:id/publish', protect, publishTest); // Publish
+router.patch('/:id/unpublish', protect, unpublishTest);
 
 export default router;

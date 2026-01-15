@@ -75,22 +75,55 @@ export const updateTest = async (req, res) => {
       totalQuestions,
     } = req.body;
 
+    // 🔴 BASIC VALIDATION
+    if (!courseId || !scopeType || !testType || !totalQuestions) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // 🔴 SCOPE BASED VALIDATION
+    if (scopeType === 'subject' && !subjectId) {
+      return res.status(400).json({ message: 'Subject required' });
+    }
+
+    if (scopeType === 'sub-subject' && !subSubjectId) {
+      return res.status(400).json({ message: 'Sub-subject required' });
+    }
+
+    if (scopeType === 'chapter' && !chapterId) {
+      return res.status(400).json({ message: 'Chapter required' });
+    }
+
+    // 🔥 MCQ COUNT CHECK (VERY IMPORTANT)
+    let filter = {};
+
+    if (scopeType === 'subject') filter.subjectId = subjectId;
+    if (scopeType === 'sub-subject') filter.subSubjectId = subSubjectId;
+    if (scopeType === 'chapter') filter.chapterId = chapterId;
+
+    const mcqCount = await MCQ.countDocuments(filter);
+
+    if (mcqCount < totalQuestions) {
+      return res
+        .status(400)
+        .json({ message: 'Not enough MCQs for this scope' });
+    }
+
+    // 🔥 UPDATE DATA
     let updateData = {
       courseId,
-      subjectId,
-      subSubjectId,
-      chapterId,
+      subjectId: scopeType === 'subject' ? subjectId : null,
+      subSubjectId:
+        scopeType === 'sub-subject' || scopeType === 'chapter'
+          ? subSubjectId
+          : null,
+      chapterId: scopeType === 'chapter' ? chapterId : null,
       scopeType,
       testType,
       totalQuestions,
     };
 
     // 🔥 duration auto update
-    if (testType === 'exam') {
-      updateData.duration = totalQuestions;
-    } else {
-      updateData.duration = null;
-    }
+    updateData.duration = testType === 'exam' ? totalQuestions : null;
 
     const test = await Test.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
@@ -131,5 +164,19 @@ export const publishTest = async (req, res) => {
     { isPublished: true },
     { new: true }
   );
+  res.json({ success: true, test });
+};
+
+export const unpublishTest = async (req, res) => {
+  const test = await Test.findByIdAndUpdate(
+    req.params.id,
+    { isPublished: false },
+    { new: true }
+  );
+
+  if (!test) {
+    return res.status(404).json({ message: 'Test not found' });
+  }
+
   res.json({ success: true, test });
 };

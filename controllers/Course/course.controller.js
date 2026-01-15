@@ -237,3 +237,64 @@ export const toggleCourseStatus = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * @desc    Publish course
+ * @route   PATCH /api/admin/courses/:id/publish
+ * @access  Private/Admin
+ */
+export const publishCourse = async (req, res, next) => {
+  try {
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found',
+      });
+    }
+
+    course.isPublished = true;
+    course.updatedBy = req.admin._id;
+    await course.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Course published successfully',
+      data: course,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Unpublish course
+ * @route   PATCH /api/admin/courses/:id/unpublish
+ * @access  Private/Admin
+ */
+export const unpublishCourse = async (req, res, next) => {
+  try {
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found',
+      });
+    }
+
+    course.isPublished = false;
+    course.updatedBy = req.admin._id;
+    await course.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Course unpublished successfully',
+      data: course,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

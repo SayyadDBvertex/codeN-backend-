@@ -1,6 +1,10 @@
 import MCQ from '../../models/MCQs/mcq.model.js';
 import Chapter from '../../models/Chapter/chapter.model.js';
 
+// ✅ CORRECT MODELS
+import SubSubject from '../../models/Sub-subject/subSubject.model.js';
+import Subject from '../../models/Subject/subject.model.js';
+
 /**
  * @desc    Create a new MCQ
  * @route   POST /api/admin/mcqs

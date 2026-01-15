@@ -63,7 +63,14 @@ export const getAllChapters = async (req, res, next) => {
     if (status) filter.status = status;
 
     const chapters = await Chapter.find(filter)
-      .populate('subSubjectId', 'name subjectId')
+      .populate({
+        path: 'subSubjectId',
+        select: 'name subjectId',
+        populate: {
+          path: 'subjectId',
+          select: 'name',
+        },
+      })
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email')
       .sort({ order: 1, createdAt: -1 });

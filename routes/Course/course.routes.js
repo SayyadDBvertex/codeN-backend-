@@ -8,6 +8,8 @@ import {
   updateCourse,
   deleteCourse,
   toggleCourseStatus,
+  publishCourse,
+  unpublishCourse,
 } from '../../controllers/Course/course.controller.js';
 
 const router = express.Router();
@@ -33,5 +35,11 @@ router.delete('/:id', deleteCourse);
 
 // Toggle course status (enable/disable)
 router.patch('/:id/status', toggleCourseStatus);
+
+// Publish course
+router.patch('/:id/publish', publishCourse);
+
+// Unpublish course
+router.patch('/:id/unpublish', unpublishCourse);
 
 export default router;
