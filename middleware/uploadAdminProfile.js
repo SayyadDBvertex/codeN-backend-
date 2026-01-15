@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 
 // ensure directory exists
-const uploadDir = 'uploads/admin-profile';
+const uploadDir = 'uploads/profile';
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -36,7 +36,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-const uploadAdminProfile = multer({
+const uploadProfile = multer({
   storage,
   fileFilter,
   limits: {
@@ -44,4 +44,4 @@ const uploadAdminProfile = multer({
   },
 });
 
-export default uploadAdminProfile;
+export default uploadProfile;

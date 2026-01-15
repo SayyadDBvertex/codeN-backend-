@@ -7,8 +7,8 @@ import {
   updateAdminProfile,
   changeAdminPassword,
 } from '../controllers/admin.controller.js';
-import uploadAdminProfile from '../middleware/uploadAdminProfile.js';
 import { protect } from '../middleware/authMiddleware.js';
+import uploadProfile from '../middleware/uploadAdminProfile.js';
 
 const router = express.Router();
 
@@ -22,7 +22,7 @@ router.get('/profile', protect, getAdminProfile);
 router.put(
   '/profile',
   protect,
-  uploadAdminProfile.single('profileImage'),
+  uploadProfile.single('profileImage'),
   updateAdminProfile
 );
 
