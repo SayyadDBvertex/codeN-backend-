@@ -48,8 +48,6 @@ const testSchema = new mongoose.Schema(
       default: null,
     },
 
-
-
     marksPerQuestion: {
       type: Number,
       default: 4,

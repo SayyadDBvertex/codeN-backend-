@@ -227,33 +227,44 @@ export const getSlugByQuery = async (req, res, next) => {
 
 export const rating = async (req, res) => {
     try {
-        // Postman se 'user_id' aa raha hai (aapne aise hi bheja tha)
-        const { user_id, rating, review } = req.body;
+        // 1. URL Parameter se User ID aur Body se data nikalna
+        const { id } = req.params; // Isse hume pata chalega kaunsa user rating de raha hai
+        const { rating, review, appVersion } = req.body; 
 
-        // 1. Validation
-        if (!user_id) {
-            return res.status(400).json({ message: "User ID is required" });
+        // 2. Validation
+        if (!id) {
+            return res.status(400).json({ 
+                status: "error",
+                message: "User ID is required in URL" 
+            });
         }
+
         if (!rating || rating < 1 || rating > 5) {
-            return res.status(400).json({ message: "Rating must be between 1 and 5" });
+            return res.status(400).json({ 
+                status: "error",
+                message: "Rating must be between 1 and 5" 
+            });
         }
 
-        // 2. Database Logic
-        // Dhyan dein: 'userId' schema se hai, aur 'user_id' req.body se
+        // 3. Database Logic (findOneAndUpdate)
+        // 'upsert: true' ka matlab: Agar is user ki rating pehle se hai toh update kar do, 
+        // warna nayi entry bana do.
         const updatedRating = await Rating.findOneAndUpdate(
-            { userId: user_id }, // <--- Yaha 'userId' kar diya hai jo schema se match karega
+            { userId: id }, 
             { 
                 rating: rating, 
-                review: review, 
-                createdAt: Date.now() 
+                review: review || "", // Review optional ho sakta hai
+                appVersion: appVersion || "1.0.0", // Default version
+                createdAt: new Date() 
             },
             { 
-                new: true, 
-                upsert: true, 
-                runValidators: true // Schema ke min/max check karne ke liye
+                new: true,      // Taki updated wala data response mein mile
+                upsert: true,   // Create if not exists
+                runValidators: true 
             }
         );
 
+        // 4. Response (Aapke Postman screenshot ke format mein)
         res.status(200).json({
             status: "success",
             message: "Thank you for your feedback!",
@@ -261,10 +272,18 @@ export const rating = async (req, res) => {
         });
 
     } catch (error) {
+        // Validation ya Database ki error handling
+        if (error.name === 'CastError') {
+            return res.status(400).json({
+                status: "error",
+                message: `Invalid ID format: ${error.value}`
+            });
+        }
+
         console.error("Rating Error:", error);
         res.status(500).json({ 
             status: "error", 
-            message: error.message 
+            message: error.message || "Internal Server Error" 
         });
     }
 };

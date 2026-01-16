@@ -16,6 +16,10 @@ const chapterSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    image: {
+      type: String,
+      default: null,
+    },
     weightage: {
       type: Number,
       default: 0,
@@ -52,4 +56,3 @@ const chapterSchema = new mongoose.Schema(
 chapterSchema.index({ subSubjectId: 1, name: 1 }, { unique: true });
 
 export default mongoose.model('Chapter', chapterSchema);
-

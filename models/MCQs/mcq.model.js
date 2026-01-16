@@ -2,6 +2,27 @@ import mongoose from 'mongoose';
 
 const mcqSchema = new mongoose.Schema(
   {
+    courseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course',
+      required: true,
+      index: true,
+    },
+
+    subjectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subject',
+      required: true,
+      index: true,
+    },
+
+    subSubjectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SubSubject',
+      required: true,
+      index: true,
+    },
+
     chapterId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Chapter',
@@ -12,6 +33,13 @@ const mcqSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    tagId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tag',
+      required: true,
+      index: true,
+    },
+
     options: {
       type: [String],
       required: true,
@@ -68,4 +96,3 @@ const mcqSchema = new mongoose.Schema(
 );
 
 export default mongoose.model('MCQ', mcqSchema);
-

@@ -7,7 +7,7 @@ import {
   updateAdminProfile,
   changeAdminPassword,
 } from '../controllers/admin.controller.js';
-import uploadAdminProfile from '../middleware/uploadAdminProfile.js';
+import upload from '../middleware/upload.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -22,16 +22,14 @@ router.get('/profile', protect, getAdminProfile);
 router.put(
   '/profile',
   protect,
-  uploadAdminProfile.single('profileImage'),
+  upload.single('profileImage'),
   updateAdminProfile
 );
 
 // Change admin password
 router.put('/change-password', protect, changeAdminPassword);
 
-
 /*        slug api like privacy-policy, term condition, about us */
-router.post('/slug',addSlug)
-
+router.post('/slug', addSlug);
 
 export default router;

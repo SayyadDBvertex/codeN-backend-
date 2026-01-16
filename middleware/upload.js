@@ -2,16 +2,33 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
-// ensure directory exists
-const uploadDir = 'uploads/admin-profile';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// default directories
+const adminProfileDir = 'uploads/admin-profile';
+const chapterImageDir = 'uploads/chapter-image';
+
+// ensure admin-profile directory exists
+if (!fs.existsSync(adminProfileDir)) {
+  fs.mkdirSync(adminProfileDir, { recursive: true });
+}
+
+// ensure chapter-image directory exists
+if (!fs.existsSync(chapterImageDir)) {
+  fs.mkdirSync(chapterImageDir, { recursive: true });
 }
 
 // storage config
 const storage = multer.diskStorage({
   destination(req, file, cb) {
-    cb(null, uploadDir);
+    /**
+     * 🔹 IMPORTANT:
+     * Existing behavior untouched
+     * Sirf chapter route ke liye path add kiya
+     */
+    if (req.baseUrl && req.baseUrl.includes('chapters')) {
+      cb(null, chapterImageDir); // ✅ chapter images
+    } else {
+      cb(null, adminProfileDir); // ✅ admin profile images
+    }
   },
 
   filename(req, file, cb) {
