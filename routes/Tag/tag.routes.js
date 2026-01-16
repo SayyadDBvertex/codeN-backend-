@@ -7,8 +7,7 @@ import {
   getTags,
   updateTag,
   deleteTag,
-} from '../../controllers/Tag/tag.controller.js';
-
+} from '../../controllers/Tags/tag.controller.js'
 const router = express.Router();
 
 router.use(protect);
