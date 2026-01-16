@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import UserModel from '../models/userModel.js';
 import { sendFormEmail } from '../config/mail.js';
 import PageModel from '../models/pageModel.js';
+import Rating from "../models/Rating.js";
 
 export const loginByGoogle = async (req, res, next) => {
     try {
@@ -224,3 +225,46 @@ export const getSlugByQuery = async (req, res, next) => {
     }
 };
 
+export const rating = async (req, res) => {
+    try {
+        // Postman se 'user_id' aa raha hai (aapne aise hi bheja tha)
+        const { user_id, rating, review } = req.body;
+
+        // 1. Validation
+        if (!user_id) {
+            return res.status(400).json({ message: "User ID is required" });
+        }
+        if (!rating || rating < 1 || rating > 5) {
+            return res.status(400).json({ message: "Rating must be between 1 and 5" });
+        }
+
+        // 2. Database Logic
+        // Dhyan dein: 'userId' schema se hai, aur 'user_id' req.body se
+        const updatedRating = await Rating.findOneAndUpdate(
+            { userId: user_id }, // <--- Yaha 'userId' kar diya hai jo schema se match karega
+            { 
+                rating: rating, 
+                review: review, 
+                createdAt: Date.now() 
+            },
+            { 
+                new: true, 
+                upsert: true, 
+                runValidators: true // Schema ke min/max check karne ke liye
+            }
+        );
+
+        res.status(200).json({
+            status: "success",
+            message: "Thank you for your feedback!",
+            data: updatedRating
+        });
+
+    } catch (error) {
+        console.error("Rating Error:", error);
+        res.status(500).json({ 
+            status: "error", 
+            message: error.message 
+        });
+    }
+};

@@ -1,5 +1,5 @@
 import express from 'express';
-import { changePassword, forgetPassword, getSlugByQuery, login, loginByGoogle, register, resendOtp, verifyEmail } from '../controllers/userController.js';
+import { changePassword,rating, forgetPassword, getSlugByQuery, login, loginByGoogle, register, resendOtp, verifyEmail } from '../controllers/userController.js';
 
 const userRouter = express.Router();
 
@@ -19,5 +19,7 @@ userRouter.post('/change-password',changePassword)
 
 /* get slug api privacy policy term condition about us */
 userRouter.get('/slug',getSlugByQuery)
+
+userRouter.post('/submit-rating', rating)
 
 export default userRouter;
