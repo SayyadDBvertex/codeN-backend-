@@ -1,5 +1,5 @@
-import SubSubject from '../../models/Sub-subject/subSubject.model.js';
-import Subject from '../../models/Subject/subject.model.js';
+import SubSubject from '../../../models/admin/Sub-subject/subSubject.model.js';
+import Subject from '../../../models/admin/Subject/subject.model.js';
 
 /**
  * @desc    Create a new sub-subject

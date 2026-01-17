@@ -6,7 +6,7 @@ import {
   getCountryById,
   updateCountry,
   deleteCountry,
-} from '../controllers/country.controller.js';
+} from '../../controllers/admin/country.controller.js';
 
 import {
   addState,
@@ -14,7 +14,7 @@ import {
   getStateById,
   updateState,
   deleteState,
-} from '../controllers/state.controller.js';
+} from '../../controllers/admin/state.controller.js';
 
 import {
   addCity,
@@ -22,7 +22,7 @@ import {
   getCityById,
   updateCity,
   deleteCity,
-} from '../controllers/city.controller.js';
+} from '../../controllers/admin/city.controller.js';
 
 import {
   addCollege,
@@ -30,7 +30,7 @@ import {
   getCollegeById,
   updateCollege,
   deleteCollege,
-} from '../controllers/college.controller.js';
+} from '../../controllers/admin/college.controller.js';
 
 const router = express.Router();
 

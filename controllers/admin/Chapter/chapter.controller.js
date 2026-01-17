@@ -1,5 +1,5 @@
-import Chapter from '../../models/Chapter/chapter.model.js';
-import SubSubject from '../../models/Sub-subject/subSubject.model.js';
+import Chapter from '../../../models/admin/Chapter/chapter.model.js';
+import SubSubject from '../../../models/admin/Sub-subject/subSubject.model.js';
 
 /**
  * @desc    Create a new chapter

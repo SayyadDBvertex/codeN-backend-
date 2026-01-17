@@ -1,4 +1,4 @@
-import { PrivacyPolicy } from "../../models/PrivacyPolicy/privacypolicy.model.js";
+import { PrivacyPolicy } from "../../../models/admin/PrivacyPolicy/privacypolicy.model.js";
 
 // Add or Update Privacy Policy
 export const addPrivacyPolicy = async (req, res) => {

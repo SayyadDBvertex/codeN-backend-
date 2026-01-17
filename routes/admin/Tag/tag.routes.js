@@ -1,13 +1,13 @@
 import express from 'express';
-import { protect } from '../../middleware/authMiddleware.js';
-import { authorize } from '../../middleware/Authorization.middleware.js';
+import { protect } from '../../../middleware/authMiddleware.js';
+import { authorize } from '../../../middleware/Authorization.middleware.js';
 
 import {
   createTag,
   getTags,
   updateTag,
   deleteTag,
-} from '../../controllers/Tags/tag.controller.js'
+} from '../../../controllers/admin/Tags/tag.controller.js';
 const router = express.Router();
 
 router.use(protect);

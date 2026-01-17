@@ -1,14 +1,17 @@
 import express from 'express';
-import { addSlug, loginAdmin } from '../controllers/admin.controller.js';
+import {
+  addSlug,
+  loginAdmin,
+} from '../../controllers/admin/admin.controller.js';
 // import { validateAdminToken } from '../middleware/adminToken.middleware.js';
 
 import {
   getAdminProfile,
   updateAdminProfile,
   changeAdminPassword,
-} from '../controllers/admin.controller.js';
-import upload from '../middleware/upload.js';
-import { protect } from '../middleware/authMiddleware.js';
+} from '../../controllers/admin/admin.controller.js';
+import upload from '../../middleware/upload.js';
+import { protect } from '../../middleware/authMiddleware.js';
 
 const router = express.Router();
 

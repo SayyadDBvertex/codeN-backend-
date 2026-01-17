@@ -1,4 +1,4 @@
-import { TermsConditions } from "../../models/TermsModel/terms.model.js";
+import { TermsConditions } from "../../../models/admin/TermsModel/terms.model.js";
 
 export const addTerms = async (req, res) => {
   const { content } = req.body;

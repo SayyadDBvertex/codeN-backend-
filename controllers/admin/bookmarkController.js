@@ -1,15 +1,15 @@
-import Bookmark from "../models/bookmarkModel.js";
+import Bookmark from '../../models/admin/bookmarkModel.js';
 
 /**
  * common validation helper
  */
 const validateBookmark = ({ type, mcqId, chapterId, subSubjectId }) => {
-  if (!type) return "type is required";
+  if (!type) return 'type is required';
 
-  if (type === "mcq" && !mcqId) return "mcqId is required";
-  if (type === "chapter" && !chapterId) return "chapterId is required";
-  if (type === "sub-subject" && !subSubjectId)
-    return "subSubjectId is required";
+  if (type === 'mcq' && !mcqId) return 'mcqId is required';
+  if (type === 'chapter' && !chapterId) return 'chapterId is required';
+  if (type === 'sub-subject' && !subSubjectId)
+    return 'subSubjectId is required';
 
   return null;
 };
@@ -27,22 +27,22 @@ export const addBookmark = async (req, res) => {
     const bookmark = await Bookmark.create({
       userId: req.user._id,
       type: req.body.type,
-      mcqId: req.body.type === "mcq" ? req.body.mcqId : null,
-      chapterId: req.body.type === "chapter" ? req.body.chapterId : null,
+      mcqId: req.body.type === 'mcq' ? req.body.mcqId : null,
+      chapterId: req.body.type === 'chapter' ? req.body.chapterId : null,
       subSubjectId:
-        req.body.type === "sub-subject" ? req.body.subSubjectId : null,
+        req.body.type === 'sub-subject' ? req.body.subSubjectId : null,
     });
 
     res.status(201).json({
       success: true,
-      message: "Bookmark added",
+      message: 'Bookmark added',
       bookmark,
     });
   } catch (error) {
     if (error.code === 11000) {
       return res
         .status(409)
-        .json({ success: false, message: "Already bookmarked" });
+        .json({ success: false, message: 'Already bookmarked' });
     }
 
     res.status(500).json({ success: false, message: error.message });
@@ -62,13 +62,13 @@ export const removeBookmark = async (req, res) => {
     await Bookmark.findOneAndDelete({
       userId: req.user._id,
       type: req.body.type,
-      mcqId: req.body.type === "mcq" ? req.body.mcqId : null,
-      chapterId: req.body.type === "chapter" ? req.body.chapterId : null,
+      mcqId: req.body.type === 'mcq' ? req.body.mcqId : null,
+      chapterId: req.body.type === 'chapter' ? req.body.chapterId : null,
       subSubjectId:
-        req.body.type === "sub-subject" ? req.body.subSubjectId : null,
+        req.body.type === 'sub-subject' ? req.body.subSubjectId : null,
     });
 
-    res.json({ success: true, message: "Bookmark removed" });
+    res.json({ success: true, message: 'Bookmark removed' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -80,9 +80,9 @@ export const removeBookmark = async (req, res) => {
 export const getMyBookmarks = async (req, res) => {
   try {
     const bookmarks = await Bookmark.find({ userId: req.user._id })
-      .populate("mcqId")
-      .populate("chapterId")
-      .populate("subSubjectId")
+      .populate('mcqId')
+      .populate('chapterId')
+      .populate('subSubjectId')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -108,10 +108,10 @@ export const toggleBookmark = async (req, res) => {
     const query = {
       userId: req.user._id,
       type: req.body.type,
-      mcqId: req.body.type === "mcq" ? req.body.mcqId : null,
-      chapterId: req.body.type === "chapter" ? req.body.chapterId : null,
+      mcqId: req.body.type === 'mcq' ? req.body.mcqId : null,
+      chapterId: req.body.type === 'chapter' ? req.body.chapterId : null,
       subSubjectId:
-        req.body.type === "sub-subject" ? req.body.subSubjectId : null,
+        req.body.type === 'sub-subject' ? req.body.subSubjectId : null,
     };
 
     const existing = await Bookmark.findOne(query);
@@ -120,7 +120,7 @@ export const toggleBookmark = async (req, res) => {
       await existing.deleteOne();
       return res.json({
         success: true,
-        message: "Bookmark removed",
+        message: 'Bookmark removed',
         bookmarked: false,
       });
     }
@@ -128,7 +128,7 @@ export const toggleBookmark = async (req, res) => {
     await Bookmark.create(query);
     res.json({
       success: true,
-      message: "Bookmark added",
+      message: 'Bookmark added',
       bookmarked: true,
     });
   } catch (error) {

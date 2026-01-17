@@ -104,7 +104,7 @@
 //     next(error);
 //   }
 // };
-import Tag from '../../models/Tags/tag.model.js';
+import Tag from '../../../models/admin/Tags/tag.model.js';
 
 // 1. CREATE
 export const createTag = async (req, res, next) => {

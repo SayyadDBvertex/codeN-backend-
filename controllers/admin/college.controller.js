@@ -1,7 +1,7 @@
-import College from '../models/college.model.js';
-import Country from '../models/country.model.js';
-import State from '../models/state.model.js';
-import City from '../models/city.model.js';
+import College from '../../models/admin/college.model.js';
+import Country from '../../models/admin/country.model.js';
+import State from '../../models/admin/state.model.js';
+import City from '../../models/admin/city.model.js';
 
 export const addCollege = async (req, res, next) => {
   try {

@@ -14,7 +14,7 @@
 //     }
 
 //     // req.file.path mein video ka local address hoga (e.g., uploads/videos/123.mp4)
-//     const videoUrl = req.file.path; 
+//     const videoUrl = req.file.path;
 
 //     const video = await Video.create({
 //       courseId,
@@ -124,7 +124,7 @@
 //   }
 // };
 
-import Video from '../../models/Video/video.model.js';
+import Video from '../../../models/admin/Video/video.model.js';
 
 /**
  * @desc    Create a new video with Thumbnail and Notes
@@ -132,16 +132,28 @@ import Video from '../../models/Video/video.model.js';
  */
 export const createVideo = async (req, res, next) => {
   try {
-    const { courseId, subjectId, subSubjectId, chapterId, title, description, order } = req.body;
+    const {
+      courseId,
+      subjectId,
+      subSubjectId,
+      chapterId,
+      title,
+      description,
+      order,
+    } = req.body;
 
     // Check karein ki main video file aayi hai ya nahi
     if (!req.files || !req.files.video) {
-      return res.status(400).json({ success: false, message: "Please upload a video file" });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Please upload a video file' });
     }
 
     // Files ke paths nikalna
     const videoUrl = req.files.video[0].path;
-    const thumbnailUrl = req.files.thumbnail ? req.files.thumbnail[0].path : null;
+    const thumbnailUrl = req.files.thumbnail
+      ? req.files.thumbnail[0].path
+      : null;
     const notesUrl = req.files.notes ? req.files.notes[0].path : null;
 
     const video = await Video.create({
@@ -153,7 +165,7 @@ export const createVideo = async (req, res, next) => {
       description,
       videoUrl,
       thumbnailUrl, // ✅ Saved
-      notesUrl,     // ✅ Saved
+      notesUrl, // ✅ Saved
       order: order || 0,
       createdBy: req.admin._id,
       updatedBy: req.admin._id,
@@ -162,7 +174,7 @@ export const createVideo = async (req, res, next) => {
     res.status(201).json({
       success: true,
       message: 'Video, Thumbnail and Notes uploaded successfully',
-      data: video
+      data: video,
     });
   } catch (error) {
     next(error);
@@ -178,7 +190,9 @@ export const updateVideo = async (req, res, next) => {
     const video = await Video.findById(req.params.id);
 
     if (!video) {
-      return res.status(404).json({ success: false, message: 'Video not found' });
+      return res
+        .status(404)
+        .json({ success: false, message: 'Video not found' });
     }
 
     // Agar nayi files upload hui hain toh update karein
@@ -247,7 +261,7 @@ export const getAllVideos = async (req, res, next) => {
     res.status(200).json({
       success: true,
       count: videos.length,
-      data: videos
+      data: videos,
     });
   } catch (error) {
     next(error);

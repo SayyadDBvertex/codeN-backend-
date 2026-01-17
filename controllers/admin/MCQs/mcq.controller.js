@@ -27,7 +27,7 @@
 // //       status,
 // //     } = req.body;
 
-    
+
 // //     if (!tagId) {
 // //       return res.status(400).json({
 // //         success: false,
@@ -605,7 +605,7 @@
 //       const ch = await Chapter.findById(chapterId);
 //       const ss = await SubSubject.findById(ch.subSubjectId);
 //       const s = await Subject.findById(ss.subjectId);
-      
+
 //       mcq.courseId = s.courseId;
 //       mcq.subjectId = s._id;
 //       mcq.subSubjectId = ss._id;
@@ -653,11 +653,11 @@
 
 // //   }
 
-import MCQ from '../../models/MCQs/mcq.model.js';
-import Chapter from '../../models/Chapter/chapter.model.js';
-import SubSubject from '../../models/Sub-subject/subSubject.model.js';
-import Subject from '../../models/Subject/subject.model.js';
-import Tag from '../../models/Tags/tag.model.js';
+import MCQ from '../../../models/admin/MCQs/mcq.model.js';
+import Chapter from '../../../models/admin/Chapter/chapter.model.js';
+import SubSubject from '../../../models/admin/Sub-subject/subSubject.model.js';
+import Subject from '../../../models/admin/Subject/subject.model.js';
+// import Tag from '../../../models/admin/Tags/tag.model.js';
 import fs from 'fs';
 import path from 'path';
 

@@ -1,5 +1,5 @@
-import Subject from '../../models/Subject/subject.model.js';
-import Course from '../../models/Course/course.model.js';
+import Subject from '../../../models/admin/Subject/subject.model.js';
+import Course from '../../../models/admin/Course/course.model.js';
 
 /**
  * @desc    Create a new subject

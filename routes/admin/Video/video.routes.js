@@ -3,10 +3,10 @@
 // import { uploadVideoFile } from '../../middleware/uploadMiddleware.js'
 
 
-// import { 
-//     createVideo, 
-//     getAllVideos, 
-//     deleteVideo 
+// import {
+//     createVideo,
+//     getAllVideos,
+//     deleteVideo
 // } from '../../controllers/Video/video.controller.js';
 
 
@@ -33,26 +33,26 @@
 
 import express from 'express';
 const router = express.Router();
-import { uploadVideoFile } from '../../middleware/uploadMiddleware.js'
+import { uploadVideoFile } from '../../../middleware/uploadMiddleware.js'
 
-import { 
-    createVideo, 
-    getAllVideos, 
+import {
+    createVideo,
+    getAllVideos,
     deleteVideo,
     updateVideo // ✅ Update controller import kiya
-} from '../../controllers/Video/video.controller.js';
+} from '../../../controllers/admin/Video/video.controller.js';
 
 /**
  * @route   POST /api/admin/videos
  * @desc    Create a new video with Thumbnail and Notes
  */
 router.post(
-    '/', 
+    '/',
     uploadVideoFile.fields([
         { name: 'video', maxCount: 1 },
         { name: 'thumbnail', maxCount: 1 },
         { name: 'notes', maxCount: 1 }
-    ]), 
+    ]),
     createVideo
 );
 
@@ -67,12 +67,12 @@ router.get('/', getAllVideos);
  * @desc    Update video details or files
  */
 router.put(
-    '/:id', 
+    '/:id',
     uploadVideoFile.fields([
         { name: 'video', maxCount: 1 },
         { name: 'thumbnail', maxCount: 1 },
         { name: 'notes', maxCount: 1 }
-    ]), 
+    ]),
     updateVideo
 );
 

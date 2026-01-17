@@ -1,6 +1,6 @@
-import Test from '../../models/testModel.js';
-import TestAttempt from '../../models/testAttemptModel.js';
-import MCQ from '../../models/MCQs/mcq.model.js';
+import Test from '../../models/admin/testModel.js';
+import TestAttempt from '../../models/user/testAttemptModel.js';
+import MCQ from '../../models/admin/MCQs/mcq.model.js';
 
 /**
  * 🔥 AUTO SUBMIT HELPER

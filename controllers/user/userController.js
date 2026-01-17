@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs';
-import UserModel from '../models/userModel.js';
-import { sendFormEmail } from '../config/mail.js';
-import PageModel from '../models/pageModel.js';
-import generateToken from '../config/generateToken.js';
+import UserModel from '../../models/user/userModel.js';
+import { sendFormEmail } from '../../config/mail.js';
+import PageModel from '../../models/admin/pageModel.js';
+import generateToken from '../../config/generateToken.js';
 
 export const loginByGoogle = async (req, res, next) => {
   try {

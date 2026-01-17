@@ -1,6 +1,6 @@
 import express from 'express';
-import { protect } from '../../middleware/authMiddleware.js';
-import { authorize } from '../../middleware/Authorization.middleware.js';
+import { protect } from '../../../middleware/authMiddleware.js';
+import { authorize } from '../../../middleware/Authorization.middleware.js';
 import {
   createChapter,
   getAllChapters,
@@ -8,8 +8,8 @@ import {
   updateChapter,
   deleteChapter,
   toggleChapterStatus,
-} from '../../controllers/Chapter/chapter.controller.js';
-import upload from '../../middleware/upload.js';
+} from '../../../controllers/admin/Chapter/chapter.controller.js';
+import upload from '../../../middleware/upload.js';
 
 const router = express.Router();
 

@@ -1,16 +1,16 @@
 import express from "express";
 const router = express.Router();
-import { protect } from '../../middleware/authMiddleware.js';
-import { authorize } from '../../middleware/Authorization.middleware.js';
+import { protect } from '../../../middleware/authMiddleware.js';
+import { authorize } from '../../../middleware/Authorization.middleware.js';
 
 // 1. Controller Imports (Comma check karein)
-import { 
-  createSubscriptionPlan, 
-  updateSubscriptionPlan, 
-  buySubscriptionPlan, 
-  getAllPlansForAdmin,    
-  getAllTransactionsForAdmin 
-} from "../../controllers/Subscription/subscription.controller.js";
+import {
+  createSubscriptionPlan,
+  updateSubscriptionPlan,
+  buySubscriptionPlan,
+  getAllPlansForAdmin,
+  getAllTransactionsForAdmin
+} from "../../../controllers/admin/Subscription/subscription.controller.js";
 
 
 router.use(protect);

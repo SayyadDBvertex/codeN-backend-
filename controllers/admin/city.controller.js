@@ -1,6 +1,6 @@
-import City from '../models/city.model.js';
-import State from '../models/state.model.js';
-import Country from '../models/country.model.js';
+import City from '../../models/admin/city.model.js';
+import State from '../../models/admin/state.model.js';
+import Country from '../../models/admin/country.model.js';
 
 export const addCity = async (req, res, next) => {
   try {

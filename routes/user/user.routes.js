@@ -10,9 +10,9 @@ import {
   register,
   resendOtp,
   verifyEmail,
-} from '../controllers/userController.js';
-import uploadProfile from '../middleware/uploaduserProfile.js';
-import { protect } from '../middleware/authMiddleware.js';
+} from '../../controllers/user/userController.js';
+import uploadProfile from '../../middleware/uploaduserProfile.js';
+import { protect } from '../../middleware/authMiddleware.js';
 
 const userRouter = express.Router();
 

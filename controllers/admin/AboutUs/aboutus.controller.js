@@ -1,4 +1,4 @@
-import { AboutUs } from "../../models/AboutUs/about.model.js";
+import { AboutUs } from "../../../models/admin/AboutUs/about.model.js";
 // Add or Edit About Us
 export const addAboutUs = async (req, res) => {
   const { content } = req.body;
@@ -18,18 +18,18 @@ export const addAboutUs = async (req, res) => {
       // If it exists, update (Edit logic)
       aboutUs.content = content;
       await aboutUs.save();
-      return res.status(200).json({ 
-        message: "About Us updated successfully", 
-        content: aboutUs.content, 
-        status: true 
+      return res.status(200).json({
+        message: "About Us updated successfully",
+        content: aboutUs.content,
+        status: true
       });
     } else {
       // If it doesn't exist, create new (Add logic)
       aboutUs = await AboutUs.create({ content });
-      return res.status(201).json({ 
-        message: "About Us added successfully", 
-        content: aboutUs.content, 
-        status: true 
+      return res.status(201).json({
+        message: "About Us added successfully",
+        content: aboutUs.content,
+        status: true
       });
     }
   } catch (error) {

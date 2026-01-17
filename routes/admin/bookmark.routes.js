@@ -4,8 +4,8 @@ import {
   removeBookmark,
   getMyBookmarks,
   toggleBookmark,
-} from '../controllers/bookmarkController.js';
-import { protect } from '../middleware/authMiddleware.js';
+} from '../../controllers//admin/bookmarkController.js';
+import { protect } from '../../middleware/authMiddleware.js';
 
 const router = express.Router();
 

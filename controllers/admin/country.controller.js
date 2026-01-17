@@ -1,4 +1,4 @@
-import Country from '../models/country.model.js';
+import Country from '../../models/admin/country.model.js';
 
 export const addCountry = async (req, res, next) => {
   try {

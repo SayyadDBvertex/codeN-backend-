@@ -37,9 +37,9 @@
 // export default router;
 
 import express from 'express';
-import { protect } from '../../middleware/authMiddleware.js';
-import { authorize } from '../../middleware/Authorization.middleware.js';
-import uploadAdminProfile from '../../middleware/upload.js'; // Aapka updated middleware
+import { protect } from '../../../middleware/authMiddleware.js';
+import { authorize } from '../../../middleware/Authorization.middleware.js';
+import uploadAdminProfile from '../../../middleware/upload.js'; // Aapka updated middleware
 import {
   createMCQ,
   getAllMCQs,
@@ -47,7 +47,7 @@ import {
   updateMCQ,
   deleteMCQ,
   toggleMCQStatus,
-} from '../../controllers/MCQs/mcq.controller.js';
+} from '../../../controllers/admin/MCQs/mcq.controller.js';
 
 const router = express.Router();
 

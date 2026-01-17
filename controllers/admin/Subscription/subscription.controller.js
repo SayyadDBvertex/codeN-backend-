@@ -1,6 +1,6 @@
-import SubscriptionPlan from "../../models/SubscriptionPlan/scriptionplan.model.js";
-import User from "../../models/userModel.js"; 
-import SubscriptionTransaction from "../../models/SubscriptionTransaction.js";
+import SubscriptionPlan from "../../../models/admin/SubscriptionPlan/scriptionplan.model.js";
+import User from "../../../models/user/userModel.js";
+import SubscriptionTransaction from "../../../models/admin/SubscriptionTransaction.js";
 
 
 export const createSubscriptionPlan = async (req, res) => {
@@ -32,7 +32,7 @@ export const createSubscriptionPlan = async (req, res) => {
 export const buySubscriptionPlan = async (req, res) => {
   try {
     const { planId, selectedMonths, transactionId, paymentMethod } = req.body;
-    const user_id = req.headers.userID; 
+    const user_id = req.headers.userID;
 
     // 1. User check karein
     const user = await User.findById(user_id);
@@ -63,10 +63,10 @@ export const buySubscriptionPlan = async (req, res) => {
       isActive: true,
       selectedMonths: pricingOption.months
     };
-    
+
     // Optional: Subscription name ke basis par status update
     const planName = plan.name.toLowerCase();
-    user.subscriptionStatus = planName.includes("professional") ? "professional" : 
+    user.subscriptionStatus = planName.includes("professional") ? "professional" :
                              planName.includes("premium") ? "premium_plus" : "starter";
 
     await user.save();
@@ -84,10 +84,10 @@ export const buySubscriptionPlan = async (req, res) => {
       durationInDays: pricingOption.months * 30 // Approx days for history
     });
 
-    res.status(200).json({ 
-      status: true, 
-      message: `Successfully subscribed to ${plan.name} for ${selectedMonths} month(s)!`, 
-      data: { subscription: user.subscription, transaction } 
+    res.status(200).json({
+      status: true,
+      message: `Successfully subscribed to ${plan.name} for ${selectedMonths} month(s)!`,
+      data: { subscription: user.subscription, transaction }
     });
   } catch (error) {
     res.status(500).json({ status: false, message: error.message });
@@ -112,12 +112,12 @@ export const getAllPlansForAdmin = async (req, res) => {
 export const updateSubscriptionPlan = async (req, res) => {
   try {
     const plan = await SubscriptionPlan.findByIdAndUpdate(
-      req.params.planId, 
-      req.body, 
+      req.params.planId,
+      req.body,
       { new: true, runValidators: true }
     );
     if (!plan) return res.status(404).json({ status: false, message: "Plan not found" });
-    
+
     res.status(200).json({ status: true, message: "Plan Updated Successfully!", data: plan });
   } catch (error) {
     res.status(500).json({ status: false, message: error.message });
@@ -131,7 +131,7 @@ export const deleteSubscriptionPlan = async (req, res) => {
   try {
     const plan = await SubscriptionPlan.findByIdAndDelete(req.params.planId);
     if (!plan) return res.status(404).json({ status: false, message: "Plan not found" });
-    
+
     res.status(200).json({ status: true, message: "Plan Deleted Successfully!" });
   } catch (error) {
     res.status(500).json({ status: false, message: error.message });
@@ -145,9 +145,9 @@ export const getAllTransactionsForAdmin = async (req, res) => {
       .populate('plan_id', 'name')      // Plan model se plan ka naam uthayega
       .sort({ createdAt: -1 });         // Latest transactions sabse upar
 
-    res.status(200).json({ 
-      status: true, 
-      data: transactions 
+    res.status(200).json({
+      status: true,
+      data: transactions
     });
   } catch (error) {
     res.status(500).json({ status: false, message: error.message });

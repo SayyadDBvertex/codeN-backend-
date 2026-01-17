@@ -1,11 +1,11 @@
 import express from 'express';
 const router = express.Router();
-import { protect } from '../../middleware/authMiddleware.js';
-import { authorize } from '../../middleware/Authorization.middleware.js';
-import { addTerms, getTerms } from '../../controllers/Terms&Condition/terms.controller.js';
-
-
-
+import { protect } from '../../../middleware/authMiddleware.js';
+import { authorize } from '../../../middleware/Authorization.middleware.js';
+import {
+  addTerms,
+  getTerms,
+} from '../../../controllers/admin/Terms&Condition/terms.controller.js';
 
 // All routes are protected and require admin role
 router.use(protect);

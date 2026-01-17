@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import Admin from '../models/admin.model.js';
+import Admin from '../models/admin/admin.model.js';
 
 /**
  * JWT authentication middleware

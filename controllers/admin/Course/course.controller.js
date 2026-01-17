@@ -1,4 +1,4 @@
-import Course from '../../models/Course/course.model.js';
+import Course from '../../../models/admin/Course/course.model.js';
 
 /**
  * @desc    Create a new course
@@ -297,4 +297,3 @@ export const unpublishCourse = async (req, res, next) => {
     next(error);
   }
 };
-

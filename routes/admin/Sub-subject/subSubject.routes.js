@@ -1,6 +1,6 @@
 import express from 'express';
-import { protect } from '../../middleware/authMiddleware.js';
-import { authorize } from '../../middleware/Authorization.middleware.js';
+import { protect } from '../../../middleware/authMiddleware.js';
+import { authorize } from '../../../middleware/Authorization.middleware.js';
 import {
   createSubSubject,
   getAllSubSubjects,
@@ -8,7 +8,7 @@ import {
   updateSubSubject,
   deleteSubSubject,
   toggleSubSubjectStatus,
-} from '../../controllers/Sub-subject/subSubject.controller.js';
+} from '../../../controllers/admin/Sub-subject/subSubject.controller.js';
 
 const router = express.Router();
 
