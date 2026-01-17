@@ -10,6 +10,10 @@ import {
   register,
   resendOtp,
   verifyEmail,
+  getSubjectsByUser,
+  getAllsubjects,
+  getSubSubjectsBySubject,
+  getMcqsByChapter, submitTest
 } from '../../controllers/user/userController.js';
 import uploadProfile from '../../middleware/uploaduserProfile.js';
 import { protect } from '../../middleware/authMiddleware.js';
@@ -32,7 +36,6 @@ userRouter.patch(
   uploadProfile.single('image'),
   editProfileOfUser
 );
-userRouter.get('/:id', protect, getUserData);
 
 /*forgot password */
 userRouter.post('/forget-password', forgetPassword);
@@ -40,5 +43,17 @@ userRouter.post('/change-password', changePassword);
 
 /* get slug api privacy policy term condition about us */
 userRouter.get('/slug', getSlugByQuery);
+
+
+userRouter.get('/get-subjects', getSubjectsByUser);
+userRouter.get('/get-all-subjects', getAllsubjects);
+
+userRouter.get('/get-sub-subjects', getSubSubjectsBySubject);
+
+userRouter.get('/get-mcqs', getMcqsByChapter);
+userRouter.post('/submit-test', submitTest);
+
+userRouter.get('/:id', protect, getUserData);
+
 
 export default userRouter;
