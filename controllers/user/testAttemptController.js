@@ -200,3 +200,96 @@ export const submitTest = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+
+export const getTestResult = async (req, res) => {
+  try {
+    const { userId, testId } = req.params;
+
+    const attempt = await TestAttempt.findOne({ userId, testId });
+
+    if (!attempt) {
+      return res.status(404).json({
+        message: 'Test attempt not found',
+      });
+    }
+
+    const totalQuestions = attempt.answers.length;
+
+    const correct = attempt.answers.filter(
+      (ans) => ans.isCorrect === true
+    ).length;
+
+    const wrong = attempt.answers.filter(
+      (ans) => ans.isCorrect === false
+    ).length;
+
+    const notAttempted =
+      totalQuestions - (correct + wrong);
+
+    const performance = totalQuestions > 0
+      ? Math.round((correct / totalQuestions) * 100)
+      : 0;
+
+    return res.status(200).json({
+      totalQuestions,
+      correct,
+      wrong,
+      notAttempted,
+      performance,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getTestReview = async (req, res) => {
+  try {
+    const { userId, testId } = req.params;
+
+    const attempt = await TestAttempt.findOne({ userId, testId }).lean();
+
+    if (!attempt) {
+      return res.status(404).json({ message: 'Test attempt not found' });
+    }
+
+    const mcqIds = attempt.answers.map((a) => a.mcqId);
+
+    const mcqs = await Mcq.find({ _id: { $in: mcqIds } }).lean();
+
+    const mcqMap = new Map(
+      mcqs.map((m) => [m._id.toString(), m])
+    );
+
+    const review = attempt.answers.map((ans) => {
+      const mcq = mcqMap.get(ans.mcqId.toString());
+
+      if (!mcq) return null;
+
+      let status = 'Not Attempted';
+
+      if (ans.selectedOption !== undefined) {
+        status = ans.isCorrect ? 'Correct' : 'Wrong';
+      }
+
+      return {
+        mcqId: mcq._id,
+        question: mcq.question,
+        options: mcq.options,
+        selectedOption: ans.selectedOption ?? null,
+        correctOption: mcq.correctOption,
+        status,
+      };
+    }).filter(Boolean);
+
+    return res.status(200).json({
+      testId,
+      totalQuestions: review.length,
+      review,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
