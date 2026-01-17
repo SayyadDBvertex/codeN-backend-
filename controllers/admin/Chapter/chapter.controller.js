@@ -6,6 +6,8 @@ import SubSubject from '../../../models/admin/Sub-subject/subSubject.model.js';
  * @route   POST /api/admin/chapters
  * @access  Private/Admin
  */
+// ... baaki imports same rahenge
+
 export const createChapter = async (req, res, next) => {
   try {
     const {
@@ -16,14 +18,12 @@ export const createChapter = async (req, res, next) => {
       order,
       isFreePreview,
       status,
+      targetMcqs, // 👈 QBank Target
     } = req.body;
 
     const subSubject = await SubSubject.findById(subSubjectId);
     if (!subSubject) {
-      return res.status(404).json({
-        success: false,
-        message: 'Sub-subject not found',
-      });
+      return res.status(404).json({ success: false, message: 'Sub-subject not found' });
     }
 
     const chapter = await Chapter.create({
@@ -34,19 +34,44 @@ export const createChapter = async (req, res, next) => {
       order: order || 0,
       isFreePreview: isFreePreview || false,
       status: status || 'active',
-      image: req.file ? `/uploads/admin-profile/${req.file.filename}` : null, // 👈 IMAGE SAVE
+      targetMcqs: targetMcqs || 50, // 👈 Default 50 questions ka target
+      image: req.file ? `/uploads/chapter-image/${req.file.filename}` : null,
       createdBy: req.admin._id,
       updatedBy: req.admin._id,
     });
 
-    res.status(201).json({
-      success: true,
-      message: 'Chapter created successfully',
-      data: chapter,
-    });
-  } catch (error) {
-    next(error);
-  }
+    res.status(201).json({ success: true, message: 'Chapter created successfully', data: chapter });
+  } catch (error) { next(error); }
+};
+
+export const updateChapter = async (req, res, next) => {
+  try {
+    const { subSubjectId, name, description, weightage, order, isFreePreview, status, targetMcqs } = req.body;
+
+    const chapter = await Chapter.findById(req.params.id);
+    if (!chapter) {
+      return res.status(404).json({ success: false, message: 'Chapter not found' });
+    }
+
+    // Update fields
+    if (subSubjectId) chapter.subSubjectId = subSubjectId;
+    if (name) chapter.name = name;
+    if (description !== undefined) chapter.description = description;
+    if (targetMcqs !== undefined) chapter.targetMcqs = targetMcqs; // 👈 Update target
+    if (weightage !== undefined) chapter.weightage = weightage;
+    if (order !== undefined) chapter.order = order;
+    if (isFreePreview !== undefined) chapter.isFreePreview = isFreePreview;
+    if (status) chapter.status = status;
+
+    if (req.file) {
+      chapter.image = `/uploads/chapter-image/${req.file.filename}`;
+    }
+
+    chapter.updatedBy = req.admin._id;
+    await chapter.save();
+
+    res.status(200).json({ success: true, message: 'Chapter updated successfully', data: chapter });
+  } catch (error) { next(error); }
 };
 
 /**
@@ -54,37 +79,84 @@ export const createChapter = async (req, res, next) => {
  * @route   GET /api/admin/chapters
  * @access  Private/Admin
  */
+// export const getAllChapters = async (req, res, next) => {
+//   try {
+//     const { subSubjectId, status } = req.query;
+//     const filter = {};
+
+//     if (subSubjectId) filter.subSubjectId = subSubjectId;
+//     if (status) filter.status = status;
+
+//     const chapters = await Chapter.find(filter)
+//       .populate({
+//         path: 'subSubjectId',
+//         select: 'name subjectId',
+//         populate: {
+//           path: 'subjectId',
+//           select: 'name',
+//         },
+//       })
+//       .populate('createdBy', 'name email')
+//       .populate('updatedBy', 'name email')
+//       .sort({ order: 1, createdAt: -1 });
+
+//     res.status(200).json({
+//       success: true,
+//       count: chapters.length,
+//       data: chapters,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
 export const getAllChapters = async (req, res, next) => {
   try {
-    const { subSubjectId, status } = req.query;
-    const filter = {};
-
-    if (subSubjectId) filter.subSubjectId = subSubjectId;
-    if (status) filter.status = status;
-
-    const chapters = await Chapter.find(filter)
-      .populate({
-        path: 'subSubjectId',
-        select: 'name subjectId',
-        populate: {
-          path: 'subjectId',
-          select: 'name',
-        },
-      })
-      .populate('createdBy', 'name email')
-      .populate('updatedBy', 'name email')
-      .sort({ order: 1, createdAt: -1 });
+    // Note: 'topics' lowercase hona chahiye jo aapke MongoDB collection ka naam hai
+    const chapters = await Chapter.aggregate([
+      {
+        $lookup: {
+          from: 'subsubjects',
+          localField: 'subSubjectId',
+          foreignField: '_id',
+          as: 'subSubjectId'
+        }
+      },
+      { $unwind: { path: '$subSubjectId', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'subjects',
+          localField: 'subSubjectId.subjectId',
+          foreignField: '_id',
+          as: 'subSubjectId.subjectId'
+        }
+      },
+      { $unwind: { path: '$subSubjectId.subjectId', preserveNullAndEmptyArrays: true } },
+      {
+        // Is Chapter ke kitne topics hain wo count karein
+        $lookup: {
+          from: 'topics',
+          localField: '_id',
+          foreignField: 'chapterId',
+          as: 'topics'
+        }
+      },
+      {
+        $addFields: {
+          topicsCount: { $size: '$topics' }
+        }
+      },
+      { $project: { topics: 0 } }, // Extra data hata dein
+      { $sort: { order: 1, createdAt: -1 } }
+    ]);
 
     res.status(200).json({
       success: true,
       count: chapters.length,
       data: chapters,
     });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 };
-
 /**
  * @desc    Get single chapter by ID
  * @route   GET /api/admin/chapters/:id
@@ -118,64 +190,64 @@ export const getChapterById = async (req, res, next) => {
  * @route   PUT /api/admin/chapters/:id
  * @access  Private/Admin
  */
-export const updateChapter = async (req, res, next) => {
-  try {
-    const {
-      subSubjectId,
-      name,
-      description,
-      weightage,
-      order,
-      isFreePreview,
-      status,
-    } = req.body;
+// export const updateChapter = async (req, res, next) => {
+//   try {
+//     const {
+//       subSubjectId,
+//       name,
+//       description,
+//       weightage,
+//       order,
+//       isFreePreview,
+//       status,
+//     } = req.body;
 
-    const chapter = await Chapter.findById(req.params.id);
+//     const chapter = await Chapter.findById(req.params.id);
 
-    if (!chapter) {
-      return res.status(404).json({
-        success: false,
-        message: 'Chapter not found',
-      });
-    }
+//     if (!chapter) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Chapter not found',
+//       });
+//     }
 
-    // If subSubjectId is being updated, verify it exists
-    if (subSubjectId && subSubjectId !== chapter.subSubjectId.toString()) {
-      const subSubject = await SubSubject.findById(subSubjectId);
-      if (!subSubject) {
-        return res.status(404).json({
-          success: false,
-          message: 'Sub-subject not found',
-        });
-      }
-    }
+//     // If subSubjectId is being updated, verify it exists
+//     if (subSubjectId && subSubjectId !== chapter.subSubjectId.toString()) {
+//       const subSubject = await SubSubject.findById(subSubjectId);
+//       if (!subSubject) {
+//         return res.status(404).json({
+//           success: false,
+//           message: 'Sub-subject not found',
+//         });
+//       }
+//     }
 
-    // Update fields
-    if (subSubjectId) chapter.subSubjectId = subSubjectId;
-    if (name) chapter.name = name;
-    if (description !== undefined) chapter.description = description;
-    if (weightage !== undefined) chapter.weightage = weightage;
-    if (order !== undefined) chapter.order = order;
-    if (isFreePreview !== undefined) chapter.isFreePreview = isFreePreview;
-    if (status) chapter.status = status;
+//     // Update fields
+//     if (subSubjectId) chapter.subSubjectId = subSubjectId;
+//     if (name) chapter.name = name;
+//     if (description !== undefined) chapter.description = description;
+//     if (weightage !== undefined) chapter.weightage = weightage;
+//     if (order !== undefined) chapter.order = order;
+//     if (isFreePreview !== undefined) chapter.isFreePreview = isFreePreview;
+//     if (status) chapter.status = status;
 
-    // ✅ IMAGE UPDATE (NEW)
-    if (req.file) {
-      chapter.image = `/uploads/chapter-image/${req.file.filename}`;
-    }
+//     // ✅ IMAGE UPDATE (NEW)
+//     if (req.file) {
+//       chapter.image = `/uploads/chapter-image/${req.file.filename}`;
+//     }
 
-    chapter.updatedBy = req.admin._id;
-    await chapter.save();
+//     chapter.updatedBy = req.admin._id;
+//     await chapter.save();
 
-    res.status(200).json({
-      success: true,
-      message: 'Chapter updated successfully',
-      data: chapter,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+//     res.status(200).json({
+//       success: true,
+//       message: 'Chapter updated successfully',
+//       data: chapter,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 
 /**
  * @desc    Delete chapter (soft delete - status change)
