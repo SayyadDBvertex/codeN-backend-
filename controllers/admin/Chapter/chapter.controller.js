@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+import chapterModel from '../../../models/admin/Chapter/chapter.model.js';
 import Chapter from '../../../models/admin/Chapter/chapter.model.js';
 import SubSubject from '../../../models/admin/Sub-subject/subSubject.model.js';
 
@@ -334,6 +336,53 @@ export const toggleChapterStatus = async (req, res, next) => {
         status === 'active' ? 'enabled' : 'disabled'
       } successfully`,
       data: chapter,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const getChapterBySubSubjectId = async (req, res, next) => {
+  try {
+    const { subSubjectId } = req.params;
+    const { status } = req.query;
+
+    // ✅ Validate subSubjectId
+    if (!mongoose.Types.ObjectId.isValid(subSubjectId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid subSubjectId',
+      });
+    }
+
+    // ✅ Optional: check sub-subject exists
+    const subSubjectExists = await SubSubject.exists({ _id: subSubjectId });
+    if (!subSubjectExists) {
+      return res.status(404).json({
+        success: false,
+        message: 'Sub-subject not found',
+      });
+    }
+
+    // ✅ Build filter
+    const filter = {
+      subSubjectId,
+    };
+
+    if (status) filter.status = status;
+
+    // ✅ Fetch chapters
+    const chapters = await chapterModel.find(filter)
+      .sort({ order: 1 })
+      .select(
+        'name description image weightage order isFreePreview status subSubjectId'
+      );
+
+    res.status(200).json({
+      success: true,
+      count: chapters.length,
+      data: chapters,
     });
   } catch (error) {
     next(error);

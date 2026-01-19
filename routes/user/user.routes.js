@@ -16,6 +16,10 @@ import uploadProfile from '../../middleware/uploaduserProfile.js';
 import { protect } from '../../middleware/authMiddleware.js';
 import { authLimiter } from '../../middleware/limiter.js';
 
+import { getAllSubjects } from '../../controllers/admin/Subject/subject.controller.js';
+import {  getSubSubjectsById } from '../../controllers/admin/Sub-subject/subSubject.controller.js';
+import { getChapterBySubSubjectId } from '../../controllers/admin/Chapter/chapter.controller.js';
+import { getChapterVideoByChapterId, getVideoData } from '../../controllers/admin/Video/video.controller.js';
 const userRouter = express.Router();
 
 /* ================= AUTH ================= */
@@ -36,6 +40,14 @@ userRouter.post('/change-password', authLimiter, changePassword);
 /* ================= USER ================= */
 
 // Edit profile
+/*========================video get api================== */
+userRouter.get('/video/:videoId', getVideoData);
+userRouter.get('/chapter/:chapterId/video', getChapterVideoByChapterId);
+userRouter.get('/sub-subject/:subSubjectId/chapter', getChapterBySubSubjectId);
+userRouter.get('/subject/:subjectId/sub-subject', getSubSubjectsById);
+userRouter.get('/subjects', getAllSubjects);
+
+/*  user details api */
 userRouter.patch(
   '/profile',
   protect,
@@ -50,5 +62,8 @@ userRouter.get('/profile/:id', protect, getUserData);
 
 // Slug pages (privacy, terms, about)
 userRouter.get('/slug', getSlugByQuery);
+
+
+
 
 export default userRouter;

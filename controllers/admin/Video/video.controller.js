@@ -124,6 +124,7 @@
 //   }
 // };
 
+import mongoose from 'mongoose';
 import Video from '../../../models/admin/Video/video.model.js';
 
 /**
@@ -262,6 +263,71 @@ export const getAllVideos = async (req, res, next) => {
       success: true,
       count: videos.length,
       data: videos,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+export const getChapterVideoByChapterId = async (req, res, next) => {
+  try {
+    const { chapterId } = req.params;
+    const { status } = req.query;
+
+    // ✅ Validate chapterId
+    if (!mongoose.Types.ObjectId.isValid(chapterId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid chapterId',
+      });
+    }
+
+    const filter = {
+      chapterId,
+    };
+
+    if (status) filter.status = status;
+
+    // ✅ Fetch videos
+    const videos = await Video.find(filter)
+      .populate('courseId', 'name')
+      .populate('subjectId', 'name')
+      .populate('subSubjectId', 'name')
+      .populate('chapterId', 'name')
+      .sort({ order: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: videos.length,
+      data: videos,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const getVideoData = async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+    const video = await Video.findById(videoId)
+      .populate('courseId', 'name')
+      .populate('subjectId', 'name')
+      .populate('subSubjectId', 'name')
+      .populate('chapterId', 'name');
+
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: 'Video not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: video,
     });
   } catch (error) {
     next(error);

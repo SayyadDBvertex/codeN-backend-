@@ -1,3 +1,4 @@
+import subSubjectModel from '../../../models/admin/Sub-subject/subSubject.model.js';
 import SubSubject from '../../../models/admin/Sub-subject/subSubject.model.js';
 import Subject from '../../../models/admin/Subject/subject.model.js';
 
@@ -231,6 +232,37 @@ export const toggleSubSubjectStatus = async (req, res, next) => {
         status === 'active' ? 'enabled' : 'disabled'
       } successfully`,
       data: subSubject,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+export const getSubSubjectsById = async (req, res, next) => {
+  try {
+    const { subjectId } = req.params;
+    const { status } = req.query;
+
+
+
+    // ✅ Build filter
+    const filter = {
+      subjectId,
+    };
+
+    if (status) filter.status = status;
+
+    // ✅ Fetch sub-subjects
+    const subSubjects = await subSubjectModel.find(filter)
+      .sort({ order: 1 })
+      .select('name description order status subjectId');
+
+    res.status(200).json({
+      success: true,
+      count: subSubjects.length,
+      data: subSubjects,
     });
   } catch (error) {
     next(error);
