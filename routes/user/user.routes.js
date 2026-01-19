@@ -24,6 +24,7 @@ import {
 import { getAboutUs } from '../../controllers/admin/AboutUs/aboutus.controller.js';
 import { getPrivacyPolicy } from '../../controllers/admin/PrivacyPolicy/privacy.controller.js';
 import { getTerms } from '../../controllers/admin/Terms&Condition/terms.controller.js';
+import { getChapterBySubSubjectId } from '../../controllers/admin/Chapter/chapter.controller.js';
 
 import uploadProfile from '../../middleware/uploaduserProfile.js';
 import { protect } from '../../middleware/authMiddleware.js';
@@ -97,6 +98,7 @@ userRouter.get(
 userRouter.get('/topics', getAllTopicsForUser);
 userRouter.get('/topics/chapter/:chapterId', getTopicsByChapterForUser);
 userRouter.get('/topics/:id', getSingleTopicForUser);
+userRouter.get("/get-chapters/:subSubjectId", getChapterBySubSubjectId);
 
 /* ================= MCQ / TEST ================= */
 
