@@ -15,6 +15,23 @@ import {
   getSubSubjectsBySubject,
   getMcqsByChapter,
   submitTest,
+  getActivePlans,
+  getMySubscription,
+  buySubscription,
+
+} from '../../controllers/user/userController.js';
+import { getAboutUs } from '../../controllers/admin/AboutUs/aboutus.controller.js'
+import { getPrivacyPolicy } from '../../controllers/admin/PrivacyPolicy/privacy.controller.js';
+import {getTerms} from "../../controllers/admin/Terms&Condition/terms.controller.js"
+
+import uploadProfile from '../../middleware/uploaduserProfile.js';
+import { protect } from '../../middleware/authMiddleware.js';
+
+import {
+  getChapterVideoByChapterId,
+  getVideoData,
+} from '../../controllers/admin/Video/video.controller.js';
+import {
   getAllTopicsForUser,
   getTopicsByChapterForUser,
   getSingleTopicForUser,
@@ -62,7 +79,7 @@ userRouter.patch(
 );
 
 // Get logged-in user data (secure)
-userRouter.get('/profile/:id', protect, getUserData);
+
 
 /* ================= CMS / STATIC ================= */
 
@@ -90,5 +107,14 @@ userRouter.get('/topics/:id', getSingleTopicForUser);
 
 userRouter.get('/get-mcqs', getMcqsByChapter);
 userRouter.post('/submit-test', testLimiter, submitTest);
+
+userRouter.get("/get-plans", getActivePlans)
+userRouter.get("/my-subscription",protect, getMySubscription);
+userRouter.post("/buy-plan",protect,buySubscription);
+userRouter.get("/about-us", getAboutUs);
+userRouter.get("/privacy-policy", getPrivacyPolicy);
+userRouter.get("/terms-conditions", getTerms);
+userRouter.get('/:id', protect, getUserData);
+userRouter.get('/profile/:id', protect, getUserData);
 
 export default userRouter;
