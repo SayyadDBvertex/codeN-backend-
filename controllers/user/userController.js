@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import fetch from 'node-fetch';
+import mongoose from 'mongoose';
 import UserModel from '../../models/user/userModel.js';
 import { sendFormEmail } from '../../config/mail.js';
 import PageModel from '../../models/admin/pageModel.js';
@@ -14,6 +14,8 @@ import SubSubject from '../../models/admin/Sub-subject/subSubject.model.js';
 import Topic from '../../models/admin/Topic/topic.model.js';
 import Chapter from '../../models/admin/Chapter/chapter.model.js';
 import MCQ from '../../models/admin/MCQs/mcq.model.js';
+import { OAuth2Client } from 'google-auth-library';
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // import Course from '../../models/admin/Course/course.model.js';
 
@@ -21,67 +23,71 @@ export const loginByGoogle = async (req, res, next) => {
   try {
     const { access_token } = req.body;
 
-    // ✅ Validate token
     if (!access_token) {
-      return res.status(400).json({
-        message: 'Google access token is required',
-      });
+      return res
+        .status(400)
+        .json({ message: 'Google access token is required' });
     }
 
-    const googleRes = await fetch(
-      'https://www.googleapis.com/oauth2/v3/userinfo',
-      {
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-        },
-      }
-    );
+    // ✅ REAL TOKEN VERIFY
+    // ✅ SECURE TOKEN VERIFY (NO GOOGLE HTTP CALL)
+    let payload;
 
-    if (!googleRes.ok) {
-      return res.status(401).json({
-        message: 'Invalid Google token',
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: access_token,
+        audience: process.env.GOOGLE_CLIENT_ID,
       });
+
+      payload = ticket.getPayload();
+    } catch (err) {
+      return res.status(401).json({ message: 'Invalid Google token' });
     }
 
-    const profile = await googleRes.json();
-
-    // ✅ Normalize & validate email
-    const email = profile.email?.toLowerCase().trim();
-    if (!email) {
-      return res.status(400).json({
-        message: 'Google account email not available',
-      });
+    if (!payload?.email || !payload?.sub) {
+      return res.status(400).json({ message: 'Invalid Google token payload' });
     }
+
+    const email = payload.email.toLowerCase().trim();
+    const googleId = payload.sub;
+    const name = payload.name || 'Google User';
 
     let user = await UserModel.findOne({ email });
 
     if (!user) {
       user = await UserModel.create({
-        name: profile.name,
+        name,
         email,
+        googleId,
         signUpBy: 'google',
         isEmailVerified: true,
         role: 'user',
       });
+    } else {
+      if (!user.googleId) user.googleId = googleId;
+      if (user.signUpBy === 'email' && !user.isEmailVerified) {
+        user.isEmailVerified = true;
+        user.signUpBy = 'google';
+      }
+      await user.save();
     }
 
-    // ✅ Blocked / inactive check (VERY IMPORTANT)
     if (user.status !== 'active') {
-      return res.status(403).json({
-        message: 'Account is blocked or inactive',
-      });
+      return res
+        .status(403)
+        .json({ message: 'Account is blocked or inactive' });
     }
 
-    const token = await generateToken(user._id);
+    const { accessToken, refreshToken } = generateToken(user._id); // updated below
 
-    // ✅ Safe user object
     const safeUser = user.toObject();
     delete safeUser.password;
     delete safeUser.otp;
     delete safeUser.otpExpiresAt;
 
     return res.status(200).json({
-      token,
+      accessToken,
+      refreshToken,
       user: safeUser,
     });
   } catch (error) {
@@ -94,6 +100,9 @@ const generateOtp = () => {
 };
 
 export const register = async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const {
       name,
@@ -109,83 +118,75 @@ export const register = async (req, res, next) => {
       password,
     } = req.body;
 
-    // ✅ BASIC VALIDATION
     if (!name || !email || !password) {
-      return res.status(400).json({
-        message: 'Name, email and password are required',
-      });
+      return res
+        .status(400)
+        .json({ message: 'Name, email and password are required' });
     }
 
-    // ✅ LOCATION & CLASS VALIDATION (THIS WAS MISSING PLACE)
-    if (!(await Country.findById(countryId))) {
-      return res.status(400).json({ message: 'Invalid country' });
-    }
-
-    if (!(await State.findOne({ _id: stateId, countryId }))) {
-      return res.status(400).json({ message: 'Invalid state' });
-    }
-
-    if (!(await City.findOne({ _id: cityId, stateId, countryId }))) {
-      return res.status(400).json({ message: 'Invalid city' });
-    }
+    if (!(await Country.findById(countryId)))
+      throw new Error('Invalid country');
+    if (!(await State.findOne({ _id: stateId, countryId })))
+      throw new Error('Invalid state');
+    if (!(await City.findOne({ _id: cityId, stateId, countryId })))
+      throw new Error('Invalid city');
 
     if (
-      !(await College.findOne({
-        _id: collegeId,
-        cityId,
-        stateId,
-        countryId,
-      }))
-    ) {
-      return res.status(400).json({ message: 'Invalid college' });
-    }
+      !(await College.findOne({ _id: collegeId, cityId, stateId, countryId }))
+    )
+      throw new Error('Invalid college');
 
-    if (!(await ClassModel.findById(classId))) {
-      return res.status(400).json({ message: 'Invalid class' });
-    }
+    if (!(await ClassModel.findById(classId))) throw new Error('Invalid class');
 
-    // ✅ PASSWORD VALIDATION
     if (password.length < 6) {
-      return res.status(400).json({
-        message: 'Password must be at least 6 characters',
-      });
+      return res
+        .status(400)
+        .json({ message: 'Password must be at least 6 characters' });
     }
 
-    const existingUser = await UserModel.findOne({
-      email: email.toLowerCase().trim(),
-    });
+    const normalizedEmail = email.toLowerCase().trim();
 
-    if (existingUser) {
+    if (await UserModel.findOne({ email: normalizedEmail })) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const otp = generateOtp();
 
-    await UserModel.create({
-      name,
-      email: email.toLowerCase().trim(),
-      password: hashedPassword,
-      otp,
-      otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-      mobile,
-      address,
-      countryId,
-      stateId,
-      cityId,
-      collegeId,
-      classId,
-      admissionYear,
-      signUpBy: 'email',
-      role: 'user',
-    });
+    const [user] = await UserModel.create(
+      [
+        {
+          name,
+          email: normalizedEmail,
+          password: hashedPassword,
+          otp,
+          otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          mobile,
+          address,
+          countryId,
+          stateId,
+          cityId,
+          collegeId,
+          classId,
+          admissionYear,
+          signUpBy: 'email',
+          role: 'user',
+        },
+      ],
+      { session }
+    );
 
-    await sendFormEmail(email, otp);
+    await sendFormEmail(normalizedEmail, otp);
+
+    await session.commitTransaction();
+    session.endSession();
 
     return res.status(201).json({
       message: 'User registered successfully. Please verify your email.',
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     next(error);
   }
 };
@@ -239,7 +240,7 @@ export const verifyEmail = async (req, res, next) => {
       });
     }
 
-    const token = await generateToken(user._id);
+    const { accessToken, refreshToken } = generateToken(user._id);
 
     // ✅ safe user object
     const safeUser = {
@@ -251,7 +252,8 @@ export const verifyEmail = async (req, res, next) => {
 
     res.json({
       message: 'Email verified successfully',
-      token,
+      accessToken,
+      refreshToken,
       user: safeUser,
     });
   } catch (error) {
@@ -294,7 +296,7 @@ export const login = async (req, res, next) => {
       return res.status(401).json({ message: 'Email not verified' });
     }
 
-    const token = await generateToken(user._id);
+    const { accessToken, refreshToken } = generateToken(user._id);
 
     // ✅ REMOVE sensitive fields
     const safeUser = user.toObject();
@@ -305,7 +307,8 @@ export const login = async (req, res, next) => {
     res.json({
       message: 'Login successful',
       user: safeUser,
-      token,
+      accessToken,
+      refreshToken,
     });
   } catch (error) {
     next(error);
@@ -518,8 +521,6 @@ export const getSlugByQuery = async (req, res, next) => {
     next(error);
   }
 };
-
-import mongoose from 'mongoose';
 
 export const getUserData = async (req, res, next) => {
   try {
@@ -831,15 +832,15 @@ export const getAllTopicsForUser = async (req, res) => {
   try {
     const topics = await Topic.find({ status: 'active' })
       .populate({
-        path: 'chapterId',
-        select: 'name subSubjectId',
+        path: 'subSubjectId',
+        select: 'name subjectId',
         populate: {
-          path: 'subSubjectId',
+          path: 'subjectId',
           select: 'name',
         },
       })
-      .select('name description order chapterId')
-      .sort({ createdAt: -1 });
+      .select('name description order subSubjectId')
+      .sort({ order: 1 });
 
     res.status(200).json({
       success: true,
@@ -866,20 +867,26 @@ export const getTopicsByChapterForUser = async (req, res) => {
       });
     }
 
-    const topics = await Topic.find({
-      chapterId,
+    const chapter = await Chapter.findById(chapterId).select('topicId');
+
+    if (!chapter || !chapter.topicId) {
+      return res.status(404).json({
+        success: false,
+        message: 'No topic found for this chapter',
+      });
+    }
+
+    const topic = await Topic.findOne({
+      _id: chapter.topicId,
       status: 'active',
-    })
-      .select('name description order chapterId')
-      .sort({ order: 1 });
+    }).select('name description order');
 
     res.status(200).json({
       success: true,
-      count: topics.length,
-      data: topics,
+      data: topic ? [topic] : [],
     });
   } catch (error) {
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -902,14 +909,14 @@ export const getSingleTopicForUser = async (req, res) => {
       status: 'active',
     })
       .populate({
-        path: 'chapterId',
-        select: 'name subSubjectId',
+        path: 'subSubjectId',
+        select: 'name subjectId',
         populate: {
-          path: 'subSubjectId',
+          path: 'subjectId',
           select: 'name',
         },
       })
-      .select('name description order chapterId');
+      .select('name description order subSubjectId');
 
     if (!topic) {
       return res.status(404).json({

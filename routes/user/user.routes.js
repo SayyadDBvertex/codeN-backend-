@@ -15,53 +15,45 @@ import {
   getSubSubjectsBySubject,
   getMcqsByChapter,
   submitTest,
-} from '../../controllers/user/userController.js';
-
-import uploadProfile from '../../middleware/uploaduserProfile.js';
-import { protect } from '../../middleware/authMiddleware.js';
-import { authLimiter } from '../../middleware/limiter.js';
-
-import { getAllSubjects } from '../../controllers/admin/Subject/subject.controller.js';
-import { getSubSubjectsById } from '../../controllers/admin/Sub-subject/subSubject.controller.js';
-import { getChapterBySubSubjectId } from '../../controllers/admin/Chapter/chapter.controller.js';
-import {
-  getChapterVideoByChapterId,
-  getVideoData,
-} from '../../controllers/admin/Video/video.controller.js';
-import {
   getAllTopicsForUser,
   getTopicsByChapterForUser,
   getSingleTopicForUser,
   getTopicsWithChaptersForUser,
 } from '../../controllers/user/userController.js';
+
+import uploadProfile from '../../middleware/uploaduserProfile.js';
+import { protect } from '../../middleware/authMiddleware.js';
+import { testLimiter, otpLimiter } from '../../middleware/limiter.js';
+
+import {
+  getChapterVideoByChapterId,
+  getVideoData,
+} from '../../controllers/admin/Video/video.controller.js';
+
 const userRouter = express.Router();
 
 /* ================= AUTH ================= */
 
 // Google login
-userRouter.post('/google', authLimiter, loginByGoogle);
+userRouter.post('/google', otpLimiter, loginByGoogle);
 
 // Email registration flow
-userRouter.post('/register', authLimiter, register);
-userRouter.post('/verify-email', authLimiter, verifyEmail);
-userRouter.post('/resend-otp', authLimiter, resendOtp);
-userRouter.post('/login', authLimiter, login);
+userRouter.post('/register', otpLimiter, register);
+userRouter.post('/verify-email', otpLimiter, verifyEmail);
+userRouter.post('/resend-otp', otpLimiter, resendOtp);
+userRouter.post('/login', otpLimiter, login);
 
 // Password recovery
-userRouter.post('/forgot-password', authLimiter, forgetPassword);
-userRouter.post('/change-password', authLimiter, changePassword);
+userRouter.post('/forgot-password', otpLimiter, forgetPassword);
+userRouter.post('/change-password', otpLimiter, changePassword);
 
 /* ================= USER ================= */
 
-// Edit profile
-/*========================video get api================== */
+// Video APIs
 userRouter.get('/video/:videoId', getVideoData);
 userRouter.get('/chapter/:chapterId/video', getChapterVideoByChapterId);
-userRouter.get('/sub-subject/:subSubjectId/chapter', getChapterBySubSubjectId);
-userRouter.get('/subject/:subjectId/sub-subject', getSubSubjectsById);
-userRouter.get('/subjects', getAllSubjects);
 
-/*  user details api */
+// Profile update
 userRouter.patch(
   '/profile',
   protect,
@@ -77,23 +69,26 @@ userRouter.get('/profile/:id', protect, getUserData);
 // Slug pages (privacy, terms, about)
 userRouter.get('/slug', getSlugByQuery);
 
-userRouter.get('/get-subjects', getSubjectsByUser);
-userRouter.get('/get-all-subjects', getAllsubjects);
+/* ================= SUBJECT / SUB-SUBJECT ================= */
 
+userRouter.get('/subjects', getSubjectsByUser);
+userRouter.get('/get-all-subjects', getAllsubjects);
 userRouter.get('/get-sub-subjects', getSubSubjectsBySubject);
 
-/* ================= TOPIC (USER) ================= */
+/* ================= TOPIC / CHAPTER ================= */
+
 userRouter.get(
   '/topics-with-chapters/sub-subject/:subSubjectId',
   getTopicsWithChaptersForUser
 );
+
 userRouter.get('/topics', getAllTopicsForUser);
 userRouter.get('/topics/chapter/:chapterId', getTopicsByChapterForUser);
 userRouter.get('/topics/:id', getSingleTopicForUser);
 
-userRouter.get('/get-mcqs', getMcqsByChapter);
-userRouter.post('/submit-test', submitTest);
+/* ================= MCQ / TEST ================= */
 
-userRouter.get('/:id', protect, getUserData);
+userRouter.get('/get-mcqs', getMcqsByChapter);
+userRouter.post('/submit-test', testLimiter, submitTest);
 
 export default userRouter;

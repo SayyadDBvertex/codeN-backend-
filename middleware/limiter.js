@@ -1,9 +1,13 @@
 import rateLimit from 'express-rate-limit';
 
-export const authLimiter = rateLimit({
+export const otpLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
+  max: 5,
+  message: 'Too many OTP requests, try again later',
+});
+
+export const testLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
   max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: 'Too many attempts. Please try again later.',
+  message: 'Too many test submissions, slow down',
 });

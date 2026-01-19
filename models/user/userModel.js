@@ -88,6 +88,9 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
+    googleId: { type: String, index: true },
+    // User schema
+    refreshToken: { type: String, select: false },
 
     signUpBy: {
       type: String,

@@ -82,6 +82,19 @@ app.use(notFound);
 
 // Error handler middleware (sabse last mein)
 app.use(errorHandler);
+app.use((err, req, res, next) => {
+  console.error(err);
+
+  const status = err.statusCode || 500;
+
+  res.status(status).json({
+    success: false,
+    message:
+      process.env.NODE_ENV === 'production'
+        ? 'Something went wrong'
+        : err.message,
+  });
+});
 
 // Server start karo
 const PORT = process.env.PORT || 4000;
