@@ -719,3 +719,25 @@ export const postRating = async (req, res) => {
   }
 };
 
+export const getAllSubSubjectsForUser = async (req, res) => {
+  try {
+    const { courseId } = req.query; // Course ke base par filter zaroori hai
+
+    if (!courseId) {
+      return res.status(400).json({ success: false, message: "courseId is required" });
+    }
+
+    // Pure course ke saare active sub-subjects fetch karna
+    const subSubjects = await SubSubject.find({ 
+      courseId: courseId, 
+      status: 'active' 
+    }).sort({ order: 1 });
+
+    res.status(200).json({
+      success: true,
+      data: subSubjects
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

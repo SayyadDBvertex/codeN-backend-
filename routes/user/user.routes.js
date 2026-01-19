@@ -77,7 +77,8 @@ import {
   getSubSubjectsBySubject,
   getMcqsByChapter,
   submitTest,
-  postRating
+  postRating,
+  getAllSubSubjectsForUser
 } from '../../controllers/user/userController.js';
 import uploadProfile from '../../middleware/uploaduserProfile.js';
 import { protect } from '../../middleware/authMiddleware.js';
@@ -257,6 +258,22 @@ userRouter.get('/get-all-subjects', getAllsubjects);
  *           type: string
  */
 userRouter.get('/get-sub-subjects', getSubSubjectsBySubject);
+
+
+/**
+ * @swagger
+ * /api/users/get-all-sub-subjects:
+ *   get:
+ *     summary: Get all sub-subjects of a course (For "All" category view)
+ *     tags: [Educational Content]
+ *     parameters:
+ *       - in: query
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ */
+userRouter.get('/get-all-sub-subjects', getAllSubSubjectsForUser);
 
 /**
  * @swagger
