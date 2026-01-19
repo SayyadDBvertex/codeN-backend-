@@ -115,12 +115,19 @@ export const getAllTopics = async (req, res) => {
         },
       })
       .populate('createdBy', 'name email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean(); // 👈 IMPORTANT
+
+    // 🔁 Force consistency
+    const safeTopics = topics.map((t) => ({
+      ...t,
+      subSubjectId: typeof t.subSubjectId === 'string' ? null : t.subSubjectId,
+    }));
 
     res.status(200).json({
       success: true,
-      count: topics.length,
-      data: topics,
+      count: safeTopics.length,
+      data: safeTopics,
     });
   } catch (error) {
     res.status(500).json({

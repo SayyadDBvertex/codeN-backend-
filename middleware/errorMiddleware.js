@@ -1,24 +1,23 @@
 /**
  * Global error handling middleware
- * Sabhi errors ko handle karta hai aur consistent response deta hai
  */
 export const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
 
-  // Log error ko console mein
-  console.error(err);
-
-  // Mongoose bad ObjectId error
-  if (err.name === 'CastError') {
-    const message = 'Resource not found'; // Resource nahi mila
-    error = { message, statusCode: 404 };
+  // ✅ Sirf REAL server errors (500+) ko log karo
+  if (res.statusCode >= 500) {
+    console.error(err);
   }
 
-  // Mongoose duplicate key error
+  // Mongoose bad ObjectId
+  if (err.name === 'CastError') {
+    error = { message: 'Resource not found', statusCode: 404 };
+  }
+
+  // Mongoose duplicate key
   if (err.code === 11000) {
-    const message = 'Duplicate field value entered'; // Duplicate value
-    error = { message, statusCode: 400 };
+    error = { message: 'Duplicate field value entered', statusCode: 400 };
   }
 
   // Mongoose validation error
@@ -31,19 +30,17 @@ export const errorHandler = (err, req, res, next) => {
 
   // JWT errors
   if (err.name === 'JsonWebTokenError') {
-    const message = 'Invalid token'; // Invalid token
-    error = { message, statusCode: 401 };
+    error = { message: 'Invalid token', statusCode: 401 };
   }
 
   if (err.name === 'TokenExpiredError') {
-    const message = 'Token expired'; // Token expire ho gaya
-    error = { message, statusCode: 401 };
+    error = { message: 'Token expired', statusCode: 401 };
   }
 
-  res.status(error.statusCode || 500).json({
+  res.status(error.statusCode || res.statusCode || 500).json({
     success: false,
-    message: error.message || 'Server Error', // Server error
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }), // Development mein stack trace dikhao
+    message: error.message || 'Server Error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };
 
@@ -52,7 +49,7 @@ export const errorHandler = (err, req, res, next) => {
  * Agar route nahi mila to yeh middleware chalega
  */
 export const notFound = (req, res, next) => {
-  const error = new Error(`Not Found - ${req.originalUrl}`); // Route nahi mila
-  res.status(404);
+  const error = new Error(`Not Found - ${req.originalUrl}`);
+  error.statusCode = 404; // 🔥 IMPORTANT
   next(error);
 };
