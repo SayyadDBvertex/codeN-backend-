@@ -3,45 +3,68 @@ import generateToken from '../../config/generateToken.js';
 import PageModel from '../../models/admin/pageModel.js';
 
 export const loginAdmin = async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    let { email, password } = req.body;
 
-  // ONLY admin allowed
-  const admin = await Admin.findOne({
-    email,
-    role: 'admin',
-  }).select('+password');
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required',
+      });
+    }
 
-  if (!admin) {
-    return res.status(401).json({
+    email = email.toLowerCase().trim(); // 🔹 FIX 1
+
+    const admin = await Admin.findOne({
+      email,
+      role: 'admin',
+    }).select('+password');
+
+    if (!admin) {
+      return res.status(401).json({
+        success: false,
+        message: 'Access denied. Admin only.',
+      });
+    }
+
+    if (admin.status !== 'active') {
+      // 🔹 FIX 2
+      return res.status(403).json({
+        success: false,
+        message: 'Admin account is inactive',
+      });
+    }
+
+    const isMatch = await admin.matchPassword(password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password',
+      });
+    }
+
+    const newToken = generateToken(admin._id);
+    admin.token = newToken;
+    admin.lastLogin = new Date(); // 🔹 FIX 3
+    await admin.save();
+    res.status(200).json({
+      success: true,
+      token: newToken,
+      data: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+      },
+    });
+  } catch (error) {
+    console.error('Admin login error:', error);
+    res.status(500).json({
       success: false,
-      message: 'Access denied. Admin only.',
+      message: 'Server error',
     });
   }
-
-  const isMatch = await admin.matchPassword(password);
-
-  if (!isMatch) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid email or password',
-    });
-  }
-
-  // Regenerate a fresh token, overwrite stored token and save
-  const newToken = generateToken(admin._id);
-  admin.token = newToken;
-  await admin.save();
-
-  res.status(200).json({
-    success: true,
-    token: newToken,
-    admin: {
-      id: admin._id,
-      name: admin.name,
-      email: admin.email,
-      role: admin.role,
-    },
-  });
 };
 
 /**
