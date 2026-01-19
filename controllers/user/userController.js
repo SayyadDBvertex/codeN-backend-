@@ -9,6 +9,12 @@ import State from '../../models/admin/state.model.js';
 import City from '../../models/admin/city.model.js';
 import College from '../../models/admin/college.model.js';
 import ClassModel from '../../models/admin/Class/class.model.js';
+import Subject from '../../models/admin/Subject/subject.model.js';
+import SubSubject from '../../models/admin/Sub-subject/subSubject.model.js';
+import MCQ from '../../models/admin/MCQs/mcq.model.js';
+
+// import Course from '../../models/admin/Course/course.model.js';
+
 
 export const loginByGoogle = async (req, res, next) => {
   try {
@@ -654,5 +660,165 @@ export const editProfileOfUser = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+
+export const getSubjectsByUser = async (req, res) => {
+    try {
+        // 1. Agar aapko kisi specific course ke subjects chahiye (e.g. ?courseId=123)
+        const { courseId } = req.query;
+
+        let filter = { status: 'active' }; // Sirf active subjects dikhayenge
+        if (courseId) {
+            filter.courseId = courseId;
+        }
+
+        // 2. Database se subjects nikalna
+        // .select() ka use karke hum sirf wahi data bhejenge jo user ko chahiye
+        // .sort() se 'order' ke hisaab se list dikhegi
+        const subjects = await Subject.find(filter)
+            .select('name description order')
+            .sort({ order: 1 });
+
+        // 3. Response bhejna
+        res.status(200).json({
+            success: true,
+            count: subjects.length,
+            data: subjects
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Subjects fetch nahi ho paye",
+            error: error.message
+        });
+    }
+};
+
+// Pearl model import karein (agar count dikhana hai)
+// import Pearl from '../../models/admin/Pearl.js';
+
+export const getAllsubjects = async (req, res) => {
+  try {
+    const { courseId } = req.query;
+
+    if (!courseId) {
+      return res.status(400).json({ success: false, message: 'courseId is required' });
+    }
+
+    // REAL DATA: Database mein is course ke total kitne active subjects hain
+    const totalSubjects = await Subject.countDocuments({
+      courseId,
+      status: 'active'
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        _id: "all",
+        name: "All",
+        count: totalSubjects // Yeh real number aayega database se
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getSubSubjectsBySubject = async (req, res) => {
+  try {
+    const { subjectId } = req.query; // Frontend se subjectId aayegi
+
+    if (!subjectId) {
+      return res.status(400).json({ success: false, message: 'subjectId is required' });
+    }
+
+    // Database se wahi sub-subjects nikalna jo is subjectId se linked hain
+    const subSubjects = await SubSubject.find({
+      subjectId: subjectId,
+      status: 'active'
+    })
+    .select('name order')
+    .sort({ order: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: subSubjects.length,
+      data: subSubjects
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+export const getMcqsByChapter = async (req, res) => {
+  try {
+    const { chapterId } = req.query;
+
+    if (!chapterId) {
+      return res.status(400).json({ success: false, message: "chapterId is required" });
+    }
+
+    const mcqs = await MCQ.find({ chapterId, status: 'active' })
+      .select('-createdBy -updatedBy') // Admin details ki zaroorat nahi hai
+      .sort({ createdAt: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: mcqs.length,
+      data: mcqs
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// B. Test Submit karke Result Calculate karna
+export const submitTest = async (req, res) => {
+  try {
+    const { chapterId, answers } = req.body;
+    // answers format: [{ mcqId: "id", selectedIndex: 0 }, ...]
+
+    if (!chapterId || !answers) {
+      return res.status(400).json({ success: false, message: "Data missing" });
+    }
+
+    // Database se us chapter ke saare sahi answers nikalna
+    const dbMcqs = await MCQ.find({ chapterId, status: 'active' });
+
+    let correct = 0;
+    let incorrect = 0;
+    let notAttempted = 0;
+    const total = dbMcqs.length;
+
+    dbMcqs.forEach((mcq) => {
+      // User ne is question ka kya answer diya?
+      const userAns = answers.find(a => a.mcqId === mcq._id.toString());
+
+      if (!userAns || userAns.selectedIndex === null || userAns.selectedIndex === undefined) {
+        notAttempted++;
+      } else if (userAns.selectedIndex === mcq.correctAnswer) {
+        correct++;
+      } else {
+        incorrect++;
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      result: {
+        totalQuestions: total,
+        solved: answers.length,
+        correct: correct,
+        incorrect: incorrect,
+        notAttempted: notAttempted,
+        scorePercentage: ((correct / total) * 100).toFixed(2)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

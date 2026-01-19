@@ -10,6 +10,10 @@ import {
   register,
   resendOtp,
   verifyEmail,
+  getSubjectsByUser,
+  getAllsubjects,
+  getSubSubjectsBySubject,
+  getMcqsByChapter, submitTest
 } from '../../controllers/user/userController.js';
 
 import uploadProfile from '../../middleware/uploaduserProfile.js';
@@ -64,6 +68,15 @@ userRouter.get('/profile/:id', protect, getUserData);
 userRouter.get('/slug', getSlugByQuery);
 
 
+userRouter.get('/get-subjects', getSubjectsByUser);
+userRouter.get('/get-all-subjects', getAllsubjects);
+
+userRouter.get('/get-sub-subjects', getSubSubjectsBySubject);
+
+userRouter.get('/get-mcqs', getMcqsByChapter);
+userRouter.post('/submit-test', submitTest);
+
+userRouter.get('/:id', protect, getUserData);
 
 
 export default userRouter;
