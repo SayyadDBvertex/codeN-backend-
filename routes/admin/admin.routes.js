@@ -2,6 +2,7 @@ import express from 'express';
 import {
   addSlug,
   loginAdmin,
+  getAllRatings
 } from '../../controllers/admin/admin.controller.js';
 // import { validateAdminToken } from '../middleware/adminToken.middleware.js';
 
@@ -34,5 +35,8 @@ router.put('/change-password', protect, changeAdminPassword);
 
 /*        slug api like privacy-policy, term condition, about us */
 router.post('/slug', addSlug);
+
+router.get('/all-ratings', getAllRatings);
+
 
 export default router;

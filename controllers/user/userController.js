@@ -6,6 +6,7 @@ import generateToken from '../../config/generateToken.js';
 import Subject from '../../models/admin/Subject/subject.model.js';
 import SubSubject from '../../models/admin/Sub-subject/subSubject.model.js';
 import MCQ from '../../models/admin/MCQs/mcq.model.js';
+import Rating from "../../models/admin/Rating.js"
 
 // import Course from '../../models/admin/Course/course.model.js';
 
@@ -691,3 +692,30 @@ export const submitTest = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
+export const postRating = async (req, res) => {
+  try {
+    const { rating, review } = req.body;
+    const userId = req.user._id; // Auth middleware se milega
+
+    if (!rating) {
+      return res.status(400).json({ success: false, message: "Rating is required" });
+    }
+
+    const newRating = await Rating.create({
+      userId,
+      rating,
+      review
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Thank you for your rating!",
+      data: newRating
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

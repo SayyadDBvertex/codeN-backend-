@@ -1,6 +1,7 @@
 import Admin from '../../models/admin/admin.model.js';
 import generateToken from '../../config/generateToken.js';
 import PageModel from '../../models/admin/pageModel.js';
+import Rating from "../../models/admin/Rating.js"
 
 export const loginAdmin = async (req, res) => {
   const { email, password } = req.body;
@@ -178,5 +179,22 @@ export const addSlug = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+
+export const getAllRatings = async (req, res) => {
+  try {
+    const ratings = await Rating.find()
+      .populate('userId', 'name email image') // User ki details fetch karne ke liye
+      .sort({ createdAt: -1 }); // Latest ratings sabse upar
+
+    res.status(200).json({
+      success: true,
+      count: ratings.length,
+      data: ratings
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
