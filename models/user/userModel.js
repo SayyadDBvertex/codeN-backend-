@@ -36,7 +36,7 @@ const userSchema = new mongoose.Schema(
 
     countryId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'country',
+      ref: 'Country',
       default: null,
     },
     stateId: {
@@ -46,13 +46,13 @@ const userSchema = new mongoose.Schema(
 
     cityId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'city',
+      ref: 'City',
       default: null,
     },
 
     collegeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'college',
+      ref: 'College',
       default: null,
     },
     classId: {
@@ -109,21 +109,25 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-//working krishna
+    //working krishna
     subscription: {
-      plan_id: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null },
+      plan_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SubscriptionPlan',
+        default: null,
+      },
       startDate: { type: Date, default: null },
       endDate: { type: Date, default: null },
       isActive: { type: Boolean, default: false },
-      selectedMonths: { type: Number, default: 0 }
+      selectedMonths: { type: Number, default: 0 },
     },
     subscriptionStatus: {
       type: String,
       enum: ['free', 'starter', 'professional', 'premium_plus'],
-      default: 'free'
-    }
+      default: 'free',
+    },
   },
-  
+
   { timestamps: true }
 );
 
