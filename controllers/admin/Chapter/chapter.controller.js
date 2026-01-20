@@ -149,7 +149,26 @@ export const updateChapter = async (req, res, next) => {
 
       chapter.topicId = topicId;
     }
+    // ✅ ADD THIS BLOCK (topic–subSubject consistency)
+    if (subSubjectId || topicId) {
+      const finalSubSubjectId = subSubjectId || chapter.subSubjectId;
+      const finalTopicId = topicId || chapter.topicId;
 
+      const topic = await Topic.findById(finalTopicId);
+      if (!topic) {
+        return res.status(404).json({
+          success: false,
+          message: 'Topic not found',
+        });
+      }
+
+      if (topic.subSubjectId.toString() !== finalSubSubjectId.toString()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Topic does not belong to this sub-subject',
+        });
+      }
+    }
     if (name !== undefined) chapter.name = name.trim();
     if (description !== undefined) chapter.description = description;
     if (targetMcqs !== undefined) chapter.targetMcqs = targetMcqs;

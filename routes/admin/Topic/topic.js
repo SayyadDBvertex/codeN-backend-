@@ -31,7 +31,7 @@ router.get('/sub-subject/:subSubjectId', getTopicsBySubSubject);
 router.get('/:id', getTopicById);
 
 // UPDATE TOPIC
-router.put('/:id', updateTopic);
+router.patch('/:id', updateTopic);
 
 // TOGGLE STATUS (ACTIVE / INACTIVE)
 router.patch('/:id/status', toggleTopicStatus);

@@ -184,12 +184,14 @@ export const getTopicById = async (req, res) => {
 // ==========================
 // UPDATE TOPIC
 // ==========================
-export const updateTopic = async (req, res) => {
+// ==========================
+// UPDATE TOPIC
+// ==========================
+export const updateTopic = async (req, res, next) => {
   try {
-    const { name, description, order, subSubjectId, status } = req.body;
+    const { name, description, order, subSubjectId } = req.body;
 
     const topic = await Topic.findById(req.params.id);
-
     if (!topic) {
       return res.status(404).json({
         success: false,
@@ -197,29 +199,10 @@ export const updateTopic = async (req, res) => {
       });
     }
 
-    if (subSubjectId) {
-      if (!mongoose.Types.ObjectId.isValid(subSubjectId)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid subSubjectId',
-        });
-      }
-
-      const subSubjectExists = await SubSubject.exists({ _id: subSubjectId });
-      if (!subSubjectExists) {
-        return res.status(404).json({
-          success: false,
-          message: 'Sub-subject not found',
-        });
-      }
-
-      topic.subSubjectId = subSubjectId;
-    }
-
+    if (subSubjectId) topic.subSubjectId = subSubjectId;
     if (name !== undefined) topic.name = name.trim();
     if (description !== undefined) topic.description = description;
     if (order !== undefined) topic.order = order;
-    if (status !== undefined) topic.status = status;
 
     topic.updatedBy = req.admin._id;
     await topic.save();
@@ -230,10 +213,7 @@ export const updateTopic = async (req, res) => {
       data: topic,
     });
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    next(error);
   }
 };
 

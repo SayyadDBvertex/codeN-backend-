@@ -72,7 +72,7 @@ const chapterImageDir = 'uploads/chapter-image';
 const mcqImageDir = 'uploads/mcq-images'; // New folder for MCQs
 
 // Ensure directories exist
-[adminProfileDir, chapterImageDir, mcqImageDir].forEach(dir => {
+[adminProfileDir, chapterImageDir, mcqImageDir].forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
@@ -88,13 +88,24 @@ const storage = multer.diskStorage({
   },
   filename(req, file, cb) {
     const ext = path.extname(file.originalname);
-    cb(null, `mcq-${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`);
+
+    let prefix = 'file';
+    if (req.baseUrl?.includes('chapters')) prefix = 'chapter';
+    else if (req.baseUrl?.includes('mcqs')) prefix = 'mcq';
+    else if (req.baseUrl?.includes('admin')) prefix = 'admin';
+
+    cb(
+      null,
+      `${prefix}-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`
+    );
   },
 });
 
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpg|jpeg|png|webp/;
-  const isMatch = allowedTypes.test(path.extname(file.originalname).toLowerCase()) && allowedTypes.test(file.mimetype);
+  const isMatch =
+    allowedTypes.test(path.extname(file.originalname).toLowerCase()) &&
+    allowedTypes.test(file.mimetype);
   isMatch ? cb(null, true) : cb(new Error('Only images allowed'));
 };
 

@@ -37,8 +37,6 @@
 
 // export default router;
 
-
-
 import express from 'express';
 import { protect } from '../../../middleware/authMiddleware.js';
 import { authorize } from '../../../middleware/Authorization.middleware.js';
@@ -82,17 +80,14 @@ router.use(authorize('admin'));
  *             type: object
  *             required:
  *               - name
- *               - courseId
- *               - subjectId
  *               - subSubjectId
+ *               - topicId
  *             properties:
  *               name:
  *                 type: string
- *               courseId:
- *                 type: string
- *               subjectId:
- *                 type: string
  *               subSubjectId:
+ *                 type: string
+ *               topicId:
  *                 type: string
  *               order:
  *                 type: number
@@ -103,6 +98,7 @@ router.use(authorize('admin'));
  *       201:
  *         description: Chapter created successfully
  */
+
 router.post('/', upload.single('image'), createChapter);
 
 /**
@@ -125,6 +121,7 @@ router.post('/', upload.single('image'), createChapter);
  */
 router.get('/', getAllChapters);
 
+router.get('/sub-subject/:subSubjectId', getChapterBySubSubjectId);
 /**
  * @swagger
  * /api/admin/chapters/{id}:

@@ -94,7 +94,6 @@
 //   );
 // });
 
-
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -126,7 +125,6 @@ import subscriptionRoutes from './routes/admin/Subscription/subscription.routes.
 import videoRoutes from './routes/admin/Video/video.routes.js';
 import Topic from './routes/admin/Topic/topic.js';
 
-
 // Middleware Imports
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
@@ -140,9 +138,19 @@ const app = express();
 connectDB();
 
 // Create Uploads Directory if not exists
-if (!fs.existsSync('./uploads/videos')) {
-  fs.mkdirSync('./uploads/videos', { recursive: true });
-}
+// Create Uploads Directories if not exists
+const uploadDirs = [
+  './uploads/videos',
+  './uploads/chapter-image',
+  './uploads/mcq-images',
+  './uploads/admin-profile',
+];
+
+uploadDirs.forEach((dir) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
 
 // --- Swagger Configuration ---
 const swaggerOptions = {
@@ -218,7 +226,7 @@ app.get('/', (req, res) => {
   res.json({
     success: true,
     message: 'Server is running',
-    swagger: `http://localhost:${process.env.PORT || 4000}/api-docs`
+    swagger: `http://localhost:${process.env.PORT || 4000}/api-docs`,
   });
 });
 
