@@ -24,6 +24,7 @@ import {
   removeBookmark,
   getMyBookmarks,
   toggleBookmark,
+  getBookmarkSummary, getBookmarksList 
 } from '../../controllers/admin/bookmarkController.js'; // Fixed double slash
 import { protect } from '../../middleware/authMiddleware.js';
 
@@ -134,6 +135,9 @@ router.get('/', getMyBookmarks);
  *       200:
  *         description: Bookmark toggled successfully
  */
+// router.post('/toggle', toggleBookmark);
 router.post('/toggle', toggleBookmark);
+router.get('/summary', getBookmarkSummary);
+router.get('/list', getBookmarksList);
 
 export default router;
