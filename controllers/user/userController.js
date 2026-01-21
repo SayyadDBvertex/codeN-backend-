@@ -215,7 +215,7 @@ export const register = async (req, res, next) => {
       admissionYear,
       password,
     } = req.body;
-
+    if (classId === "") classId = null;
     // 1. Basic Validation
     if (!name || !email || !password || !stateId || !cityId || !collegeName) {
       if (session.inTransaction()) await session.abortTransaction();
@@ -271,15 +271,22 @@ export const register = async (req, res, next) => {
     }
 
     // 5. Class Validation
-    const classExists = await ClassModel.findById(classId);
-    if (!classExists) {
-      if (session.inTransaction()) await session.abortTransaction();
-      session.endSession();
-      return res
-        .status(400)
-        .json({ success: false, message: 'Invalid class selected.' });
-    }
-
+    // const classExists = await ClassModel.findById(classId);
+    // if (!classExists) {
+    //   if (session.inTransaction()) await session.abortTransaction();
+    //   session.endSession();
+    //   return res
+    //     .status(400)
+    //     .json({ success: false, message: 'Invalid class selected.' });
+    // }
+if (classId) { // <--- Ye if condition lagana zaroori hai
+  const classExists = await ClassModel.findById(classId);
+  if (!classExists) {
+    if (session.inTransaction()) await session.abortTransaction();
+    session.endSession();
+    return res.status(400).json({ success: false, message: 'Invalid class selected.' });
+  }
+}
     // 6. Password & User Existence
     if (password.length < 6) {
       if (session.inTransaction()) await session.abortTransaction();
