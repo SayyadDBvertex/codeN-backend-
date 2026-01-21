@@ -215,7 +215,7 @@ export const register = async (req, res, next) => {
       admissionYear,
       password,
     } = req.body;
-    if (classId === "") classId = null;
+    if (classId === '') classId = null;
     // 1. Basic Validation
     if (!name || !email || !password || !stateId || !cityId || !collegeName) {
       if (session.inTransaction()) await session.abortTransaction();
@@ -279,14 +279,17 @@ export const register = async (req, res, next) => {
     //     .status(400)
     //     .json({ success: false, message: 'Invalid class selected.' });
     // }
-if (classId) { // <--- Ye if condition lagana zaroori hai
-  const classExists = await ClassModel.findById(classId);
-  if (!classExists) {
-    if (session.inTransaction()) await session.abortTransaction();
-    session.endSession();
-    return res.status(400).json({ success: false, message: 'Invalid class selected.' });
-  }
-}
+    if (classId) {
+      // <--- Ye if condition lagana zaroori hai
+      const classExists = await ClassModel.findById(classId);
+      if (!classExists) {
+        if (session.inTransaction()) await session.abortTransaction();
+        session.endSession();
+        return res
+          .status(400)
+          .json({ success: false, message: 'Invalid class selected.' });
+      }
+    }
     // 6. Password & User Existence
     if (password.length < 6) {
       if (session.inTransaction()) await session.abortTransaction();
@@ -648,6 +651,35 @@ export const changePassword = async (req, res, next) => {
 
     res.status(200).json({
       message: 'Password changed successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const logout = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    // DB se token remove karo
+    const user = await UserModel.findByIdAndUpdate(
+      userId,
+      {
+        refreshToken: null, // ya token field jo tum use kar rahe ho
+      },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Logout successful',
     });
   } catch (error) {
     next(error);

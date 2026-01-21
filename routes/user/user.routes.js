@@ -42,8 +42,6 @@
 
 // import { testLimiter, otpLimiter } from '../../middleware/limiter.js';
 
-
-
 // const userRouter = express.Router();
 
 // /* ================= AUTH ================= */
@@ -100,8 +98,6 @@
 // userRouter.get('/topics/:id', getSingleTopicForUser);
 // userRouter.get("/get-chapters/:subSubjectId", getChapterBySubSubjectId);
 
-
-
 // /* ================= MCQ / TEST ================= */
 
 // userRouter.get('/get-mcqs', getMcqsByChapter);
@@ -117,8 +113,6 @@
 // userRouter.get('/profile/:id', protect, getUserData);
 
 // export default userRouter;
-
-
 
 import express from 'express';
 import {
@@ -141,6 +135,7 @@ import {
   getMySubscription,
   buySubscription,
   postRating,
+  logout,
 } from '../../controllers/user/userController.js';
 
 import { getAboutUs } from '../../controllers/admin/AboutUs/aboutus.controller.js';
@@ -328,6 +323,33 @@ userRouter.post('/resend-otp', otpLimiter, resendOtp);
  */
 
 userRouter.post('/login', login);
+
+/**
+ * @swagger
+ * /api/users/logout:
+ *   post:
+ *     summary: Logout user and invalidate token
+ *     tags: [User Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Logout successful
+ *       401:
+ *         description: Unauthorized
+ */
+userRouter.post('/logout', protect, logout);
 
 userRouter.post('/forgot-password', otpLimiter, forgetPassword);
 userRouter.post('/change-password', otpLimiter, changePassword);
