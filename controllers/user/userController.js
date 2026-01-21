@@ -18,7 +18,7 @@ import { OAuth2Client } from 'google-auth-library';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 import SubscriptionPlan from '../../models/admin/SubscriptionPlan/scriptionplan.model.js';
 import TransactionModel from '../../models/admin/Transaction/Transaction.js';
-import Rating from "../../models/admin/Rating.js"
+import Rating from '../../models/admin/Rating.js';
 
 // import Course from '../../models/admin/Course/course.model.js';
 
@@ -198,7 +198,6 @@ const generateOtp = () => {
 //   }
 // };
 
-
 export const register = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -223,7 +222,8 @@ export const register = async (req, res, next) => {
       session.endSession();
       return res.status(400).json({
         success: false,
-        message: 'All fields (Name, Email, Password, State, City, College Name) are required.'
+        message:
+          'All fields (Name, Email, Password, State, City, College Name) are required.',
       });
     }
 
@@ -232,7 +232,10 @@ export const register = async (req, res, next) => {
     if (!activeState) {
       if (session.inTransaction()) await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ success: false, message: 'Selected state is not active for registration.' });
+      return res.status(400).json({
+        success: false,
+        message: 'Selected state is not active for registration.',
+      });
     }
 
     // 3. City Validation
@@ -240,22 +243,30 @@ export const register = async (req, res, next) => {
     if (!cityExists) {
       if (session.inTransaction()) await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ success: false, message: 'Invalid city selection for this state.' });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid city selection for this state.',
+      });
     }
 
     // 4. Dynamic College Logic
     let college = await College.findOne({
       name: { $regex: new RegExp(`^${collegeName.trim()}$`, 'i') },
-      cityId
+      cityId,
     }).session(session);
 
     if (!college) {
-      const createdColleges = await College.create([{
-        name: collegeName.trim(),
-        cityId,
-        stateId,
-        isActive: true
-      }], { session });
+      const createdColleges = await College.create(
+        [
+          {
+            name: collegeName.trim(),
+            cityId,
+            stateId,
+            isActive: true,
+          },
+        ],
+        { session }
+      );
       college = createdColleges[0];
     }
 
@@ -264,14 +275,19 @@ export const register = async (req, res, next) => {
     if (!classExists) {
       if (session.inTransaction()) await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ success: false, message: 'Invalid class selected.' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid class selected.' });
     }
 
     // 6. Password & User Existence
     if (password.length < 6) {
       if (session.inTransaction()) await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters.',
+      });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -279,7 +295,10 @@ export const register = async (req, res, next) => {
     if (existingUser) {
       if (session.inTransaction()) await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ success: false, message: 'User already exists with this email.' });
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists with this email.',
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -291,7 +310,7 @@ export const register = async (req, res, next) => {
         {
           name,
           email: normalizedEmail,
-          password: password, // ✅ Plain password bhejein, Model ise hash kar dega
+          password: password,
           otp,
           otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
           mobile,
@@ -311,7 +330,7 @@ export const register = async (req, res, next) => {
     // 8. Commit and Cleanup
     await session.commitTransaction();
     session.endSession();
-
+    await sendFormEmail(normalizedEmail, otp);
     // 9. Fetch Populated Data for Response
     const populatedUser = await UserModel.findById(user._id)
       .populate('stateId', 'name')
@@ -322,11 +341,14 @@ export const register = async (req, res, next) => {
     return res.status(201).json({
       success: true,
       message: 'User registered successfully. Please verify your email.',
-      data: populatedUser
+      data: populatedUser,
     });
-
   } catch (error) {
-
+    // FIX: Only abort if the transaction is still active
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
     next(error);
   }
 };
@@ -391,8 +413,6 @@ export const verifyEmail = async (req, res, next) => {
 
     res.json({
       message: 'Email verified successfully',
-      accessToken,
-      refreshToken,
       user: safeUser,
     });
   } catch (error) {
@@ -400,191 +420,57 @@ export const verifyEmail = async (req, res, next) => {
   }
 };
 
-// export const login = async (req, res, next) => {
-//   try {
-//     const { email, password } = req.body;
-//     const normalizedEmail = email.toLowerCase().trim();
-
-//     // ✅ ADD: basic validation
-//     if (!email || !password) {
-//       return res.status(400).json({
-//         message: 'Email and password are required',
-//       });
-//     }
-
-//     // ✅ Ensure password is selected
-//     const user = await UserModel.findOne({ email: normalizedEmail }).select(
-//       '+password'
-//     );
-//     if (!user) {
-//       return res.status(404).json({ message: 'User not found' });
-//     }
-
-//     if (user.status !== 'active') {
-//       return res.status(403).json({
-//         message: 'Account is blocked or inactive',
-//       });
-//     }
-
-//     const isMatch = await bcrypt.compare(password, user.password);
-//     if (!isMatch) {
-//       return res.status(401).json({ message: 'Invalid credentials' });
-//     }
-
-//     if (!user.isEmailVerified) {
-//       return res.status(401).json({ message: 'Email not verified' });
-//     }
-
-//     const { accessToken, refreshToken } = generateToken(user._id);
-
-//     // ✅ REMOVE sensitive fields
-//     const safeUser = user.toObject();
-//     delete safeUser.password;
-//     delete safeUser.otp;
-//     delete safeUser.otpExpiresAt;
-
-//     res.json({
-//       message: 'Login successful',
-//       user: safeUser,
-//       accessToken,
-//       refreshToken,
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-// export const login = async (req, res, next) => {
-//   try {
-//     const { email, password } = req.body;
-
-//     // 1. ✅ Validation Pehle (Taaki undefined.toLowerCase() wala crash na ho)
-//     if (!email || !password) {
-//       return res.status(400).json({
-//         success: false,
-//         message: 'Email and password are required',
-//       });
-//     }
-
-//     const normalizedEmail = email.toLowerCase().trim();
-
-//     // 2. User dhundo password ke saath
-//     const user = await UserModel.findOne({ email: normalizedEmail }).select('+password');
-
-//     if (!user) {
-//       return res.status(404).json({ success: false, message: 'User not found' });
-//     }
-
-//     // 3. Status check
-//     if (user.status !== 'active') {
-//       return res.status(403).json({
-//         success: false,
-//         message: 'Account is blocked or inactive',
-//       });
-//     }
-
-//     // 4. Password Match
-//     const isMatch = await bcrypt.compare(password, user.password);
-//     if (!isMatch) {
-//       return res.status(401).json({ success: false, message: 'Invalid credentials' });
-//     }
-
-//     // 5. Verification check
-//     if (!user.isEmailVerified) {
-//       return res.status(401).json({ success: false, message: 'Email not verified' });
-//     }
-
-//     // 6. Token Generation
-//     const { accessToken, refreshToken } = generateToken(user._id);
-
-//     // ✅ 7. DATABASE MEIN TOKEN SAVE KARNA
-//     user.refreshToken = refreshToken;
-//     await user.save(); // Model mein laga 'pre-save' hook isModified check ki wajah se password ko safe rakhega
-
-//     // 8. Sensitive fields hatana
-//     const safeUser = user.toObject();
-//     delete safeUser.password;
-//     delete safeUser.refreshToken; // Response ke user object mein token dikhane ki zaroorat nahi
-//     delete safeUser.otp;
-//     delete safeUser.otpExpiresAt;
-
-//     // 9. Final Response
-//     res.json({
-//       success: true,
-//       message: 'Login successful',
-//       accessToken,   // Frontend ke liye
-//       refreshToken,  // Frontend ke liye
-//       user: safeUser,
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-
-
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-
-    // 1. Validation Pehle
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email and password are required' });
-    }
-
     const normalizedEmail = email.toLowerCase().trim();
 
-    // 2. User dhundo password ke saath
-    const user = await UserModel.findOne({ email: normalizedEmail }).select('+password');
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+    // ✅ ADD: basic validation
+    if (!email || !password) {
+      return res.status(400).json({
+        message: 'Email and password are required',
+      });
     }
 
-    // 3. Status aur Password check
+    // ✅ Ensure password is selected
+    const user = await UserModel.findOne({ email: normalizedEmail }).select(
+      '+password'
+    );
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     if (user.status !== 'active') {
-      return res.status(403).json({ success: false, message: 'Account is blocked or inactive' });
+      return res.status(403).json({
+        message: 'Account is blocked or inactive',
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     if (!user.isEmailVerified) {
-      return res.status(401).json({ success: false, message: 'Email not verified' });
+      return res.status(401).json({ message: 'Email not verified' });
     }
 
-    // --- ✅ TOKENS GENERATE KARNA ---
-    // Note: ensure generateToken.js { accessToken, refreshToken } return kare
-    const tokens = generateToken(user._id);
-
-    // Agar generateToken sirf ek string return kar raha hai, toh hum manually handle karenge
-    const accessToken = tokens.accessToken || tokens;
-    const refreshToken = tokens.refreshToken || tokens;
-
-    // --- ✅ DATABASE MEIN SAVE KARNA ---
-    user.refreshToken = refreshToken;
-
-    // user.save() karne par model ka pre-save hook chalega
-    // par isModified('password') false hoga, isliye password hash kharab nahi hoga
+    const token = generateToken(user._id);
+    user.refreshToken = token;
     await user.save();
 
-    // 4. Safe User object
+    // ✅ REMOVE sensitive fields
     const safeUser = user.toObject();
     delete safeUser.password;
-    delete safeUser.refreshToken; // Response se hatana zaroori hai
     delete safeUser.otp;
     delete safeUser.otpExpiresAt;
+    delete safeUser.refreshToken;
 
-    // --- ✅ FINAL RESPONSE (Token yahan hone chahiye) ---
-    return res.status(200).json({
-      success: true,
+    res.json({
       message: 'Login successful',
-      accessToken,   // Postman mein dikhega
-      refreshToken,  // Postman mein dikhega
       user: safeUser,
+      token,
     });
-
   } catch (error) {
     next(error);
   }
@@ -747,7 +633,7 @@ export const changePassword = async (req, res, next) => {
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
+    user.password = newPassword;
     user.otp = null;
     user.otpExpiresAt = null;
 
@@ -1287,14 +1173,14 @@ export const submitTest = async (req, res) => {
   }
 };
 
-
-
 // 1. Saare Active Plans Dekhna
 export const getActivePlans = async (req, res, next) => {
   try {
     const plans = await SubscriptionPlan.find({ isActive: true });
     res.status(200).json({ success: true, data: plans });
-  } catch (error) { next(error); }
+  } catch (error) {
+    next(error);
+  }
 };
 
 // 2. Buy Subscription (Final Step after Payment)
@@ -1305,11 +1191,14 @@ export const buySubscription = async (req, res, next) => {
 
     // Plan check karein
     const plan = await SubscriptionPlan.findById(planId);
-    if (!plan) return res.status(404).json({ message: "Plan not found" });
+    if (!plan) return res.status(404).json({ message: 'Plan not found' });
 
     // Price confirm karein
-    const selectedPricing = plan.pricing.find(p => p.months === Number(months));
-    if (!selectedPricing) return res.status(400).json({ message: "Invalid duration" });
+    const selectedPricing = plan.pricing.find(
+      (p) => p.months === Number(months)
+    );
+    if (!selectedPricing)
+      return res.status(400).json({ message: 'Invalid duration' });
 
     // Expiry Date calculate karein
     const startDate = new Date();
@@ -1328,27 +1217,29 @@ export const buySubscription = async (req, res, next) => {
         startDate,
         endDate,
         isActive: true,
-        selectedMonths: months
+        selectedMonths: months,
       },
-      subscriptionStatus: status
+      subscriptionStatus: status,
     });
 
     // Transaction save karein
     await TransactionModel.create({
-  userId,
-  planId,
-  razorpay_payment_id: paymentId,
-  razorpay_order_id: orderId,
-  amount: selectedPricing.price,
-  months: Number(months)
-});
+      userId,
+      planId,
+      razorpay_payment_id: paymentId,
+      razorpay_order_id: orderId,
+      amount: selectedPricing.price,
+      months: Number(months),
+    });
 
     res.status(200).json({
       success: true,
-      message: "Subscription activated successfully!",
-      expiryDate: endDate
+      message: 'Subscription activated successfully!',
+      expiryDate: endDate,
     });
-  } catch (error) { next(error); }
+  } catch (error) {
+    next(error);
+  }
 };
 export const getMySubscription = async (req, res) => {
   try {
@@ -1358,60 +1249,66 @@ export const getMySubscription = async (req, res) => {
       .populate('subscription.plan_id', 'name features');
 
     if (!user.subscription || !user.subscription.isActive) {
-      return res.status(200).json({ status: true, message: "No active subscription found", data: null });
+      return res.status(200).json({
+        status: true,
+        message: 'No active subscription found',
+        data: null,
+      });
     }
 
     res.status(200).json({ status: true, data: user });
   } catch (error) {
     res.status(500).json({ status: false, message: error.message });
   }
-}
- export const postRating = async (req, res) => {
-      try {
-        const { rating, review } = req.body;
-        const userId = req.user._id; // Auth middleware se milega
+};
+export const postRating = async (req, res) => {
+  try {
+    const { rating, review } = req.body;
+    const userId = req.user._id; // Auth middleware se milega
 
-        if (!rating) {
-          return res.status(400).json({ success: false, message: "Rating is required" });
-        }
-
-        const newRating = await Rating.create({
-          userId,
-          rating,
-          review
-        });
-
-        res.status(201).json({
-          success: true,
-          message: "Thank you for your rating!",
-          data: newRating
-        });
-      } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-      }
-    };
-
-
-  export const getAllSubSubjectsForUser = async (req, res) => {
-    try {
-      const { courseId } = req.query; // Course ke base par filter zaroori hai
-
-      if (!courseId) {
-        return res.status(400).json({ success: false, message: "courseId is required" });
-      }
-
-      // Pure course ke saare active sub-subjects fetch karna
-      const subSubjects = await SubSubject.find({
-        courseId: courseId,
-        status: 'active'
-      }).sort({ order: 1 });
-
-      res.status(200).json({
-        success: true,
-        data: subSubjects
-      });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+    if (!rating) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Rating is required' });
     }
-  };
 
+    const newRating = await Rating.create({
+      userId,
+      rating,
+      review,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Thank you for your rating!',
+      data: newRating,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getAllSubSubjectsForUser = async (req, res) => {
+  try {
+    const { courseId } = req.query; // Course ke base par filter zaroori hai
+
+    if (!courseId) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'courseId is required' });
+    }
+
+    // Pure course ke saare active sub-subjects fetch karna
+    const subSubjects = await SubSubject.find({
+      courseId: courseId,
+      status: 'active',
+    }).sort({ order: 1 });
+
+    res.status(200).json({
+      success: true,
+      data: subSubjects,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
