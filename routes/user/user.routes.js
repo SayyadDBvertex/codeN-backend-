@@ -236,7 +236,64 @@ userRouter.get('/video/:videoId', getVideoData);
  */
 userRouter.get('/chapter/:chapterId/video', getChapterVideoByChapterId);
 
-// Profile update
+/**
+ * @swagger
+ * /api/users/profile:
+ *   patch:
+ *     summary: Update logged-in user profile
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               mobile:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               countryId:
+ *                 type: string
+ *               stateId:
+ *                 type: string
+ *               cityId:
+ *                 type: string
+ *               collegeId:
+ *                 type: string
+ *               classId:
+ *                 type: string
+ *               admissionYear:
+ *                 type: string
+ *               passingYear:
+ *                 type: string
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: No valid fields provided for update
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
+
 userRouter.patch(
   '/profile',
   protect,
@@ -317,7 +374,7 @@ userRouter.get('/terms-conditions', getTerms);
  * @swagger
  * /api/users/{id}:
  *   get:
- *     summary: Get logged in user data
+ *     summary: Get logged-in user profile data
  *     tags: [User]
  *     security:
  *       - bearerAuth: []
@@ -327,12 +384,56 @@ userRouter.get('/terms-conditions', getTerms);
  *         required: true
  *         schema:
  *           type: string
+ *         description: Logged-in user ID
  *     responses:
  *       200:
- *         description: User data fetched
+ *         description: User profile fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     mobile:
+ *                       type: string
+ *                     address:
+ *                       type: string
+ *                     countryId:
+ *                       type: string
+ *                     stateId:
+ *                       type: string
+ *                     cityId:
+ *                       type: string
+ *                     collegeId:
+ *                       type: string
+ *                     classId:
+ *                       type: string
+ *                     admissionYear:
+ *                       type: string
+ *                     passingYear:
+ *                       type: string
+ *                     profileImage:
+ *                       type: string
+ *       400:
+ *         description: Invalid user id
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: User not found
  */
 
-userRouter.get('/:id', protect, getUserData);
 userRouter.get('/profile/:id', protect, getUserData);
+// userRouter.get('/:id', protect, getUserData);
 
 export default userRouter;
