@@ -75,7 +75,7 @@ const userRouter = express.Router();
  *         description: Google login successful
  */
 
-userRouter.post('/google', otpLimiter, loginByGoogle);
+userRouter.post('/google', loginByGoogle);
 
 // Email registration flow
 /**
@@ -181,7 +181,7 @@ userRouter.post('/resend-otp', otpLimiter, resendOtp);
  *         description: Login successful
  */
 
-userRouter.post('/login', otpLimiter, login);
+userRouter.post('/login', login);
 
 // Password recovery
 userRouter.post('/forgot-password', otpLimiter, forgetPassword);
