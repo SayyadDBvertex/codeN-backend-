@@ -102,6 +102,104 @@ const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+// export const register = async (req, res, next) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     const {
+//       name,
+//       email,
+//       mobile,
+//       address,
+//       countryId,
+//       stateId,
+//       cityId,
+//       collegeId,
+//       classId,
+//       admissionYear,
+//       password,
+//     } = req.body;
+
+//     if (!name || !email || !password) {
+//       return res
+//         .status(400)
+//         .json({ message: 'Name, email and password are required' });
+//     }
+//     const activeState = await State.findOne({ _id: stateId, countryId, active: true });
+//     if (!activeState) {
+//       return res.status(400).json({ message: 'This state is currently not active for registration' });
+//     }
+
+//     if (!(await Country.findById(countryId)))
+//       throw new Error('Invalid country');
+//     if (!(await State.findOne({ _id: stateId, countryId })))
+//       throw new Error('Invalid state');
+//     if (!(await City.findOne({ _id: cityId, stateId, countryId })))
+//       throw new Error('Invalid city');
+
+//     if (
+//       !(await College.findOne({ _id: collegeId, cityId, stateId, countryId }))
+//     )
+//       throw new Error('Invalid college');
+
+//     if (!(await ClassModel.findById(classId))) throw new Error('Invalid class');
+
+//     if (password.length < 6) {
+//       return res
+//         .status(400)
+//         .json({ message: 'Password must be at least 6 characters' });
+//     }
+
+//     const normalizedEmail = email.toLowerCase().trim();
+
+//     if (await UserModel.findOne({ email: normalizedEmail })) {
+//       return res.status(400).json({ message: 'User already exists' });
+//     }
+
+//     const hashedPassword = await bcrypt.hash(password, 10);
+//     const otp = generateOtp();
+
+//     const [user] = await UserModel.create(
+//       [
+//         {
+//           name,
+//           email: normalizedEmail,
+//           password: hashedPassword,
+//           otp,
+//           otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+//           mobile,
+//           address,
+//           countryId,
+//           stateId,
+//           cityId,
+//           collegeId,
+//           classId,
+//           admissionYear,
+//           signUpBy: 'email',
+//           role: 'user',
+//         },
+//       ],
+//       { session }
+//     );
+
+//     await sendFormEmail(normalizedEmail, otp);
+
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     return res.status(201).json({
+//       message: 'User registered successfully. Please verify your email.',
+//     });
+//   } catch (error) {
+//     await session.abortTransaction();
+//     session.endSession();
+//     next(error);
+//   }
+// };
+
+
+
 export const register = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -112,50 +210,83 @@ export const register = async (req, res, next) => {
       email,
       mobile,
       address,
-      countryId,
       stateId,
       cityId,
-      collegeId,
+      collegeName,
       classId,
       admissionYear,
       password,
     } = req.body;
 
-    if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: 'Name, email and password are required' });
+    // 1. Basic Validation
+    if (!name || !email || !password || !stateId || !cityId || !collegeName) {
+      if (session.inTransaction()) await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ 
+        success: false,
+        message: 'All fields (Name, Email, Password, State, City, College Name) are required.' 
+      });
     }
 
-    if (!(await Country.findById(countryId)))
-      throw new Error('Invalid country');
-    if (!(await State.findOne({ _id: stateId, countryId })))
-      throw new Error('Invalid state');
-    if (!(await City.findOne({ _id: cityId, stateId, countryId })))
-      throw new Error('Invalid city');
+    // 2. Active State Check
+    const activeState = await State.findOne({ _id: stateId, isActive: true });
+    if (!activeState) {
+      if (session.inTransaction()) await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, message: 'Selected state is not active for registration.' });
+    }
 
-    if (
-      !(await College.findOne({ _id: collegeId, cityId, stateId, countryId }))
-    )
-      throw new Error('Invalid college');
+    // 3. City Validation
+    const cityExists = await City.findOne({ _id: cityId, stateId });
+    if (!cityExists) {
+      if (session.inTransaction()) await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, message: 'Invalid city selection for this state.' });
+    }
 
-    if (!(await ClassModel.findById(classId))) throw new Error('Invalid class');
+    // 4. Dynamic College Logic
+    let college = await College.findOne({ 
+      name: { $regex: new RegExp(`^${collegeName.trim()}$`, 'i') }, 
+      cityId 
+    }).session(session);
 
+    if (!college) {
+      const createdColleges = await College.create([{
+        name: collegeName.trim(),
+        cityId,
+        stateId,
+        isActive: true
+      }], { session });
+      college = createdColleges[0];
+    }
+
+    // 5. Class Validation
+    const classExists = await ClassModel.findById(classId);
+    if (!classExists) {
+      if (session.inTransaction()) await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, message: 'Invalid class selected.' });
+    }
+
+    // 6. Password & User Existence
     if (password.length < 6) {
-      return res
-        .status(400)
-        .json({ message: 'Password must be at least 6 characters' });
+      if (session.inTransaction()) await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-
-    if (await UserModel.findOne({ email: normalizedEmail })) {
-      return res.status(400).json({ message: 'User already exists' });
+    const existingUser = await UserModel.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      if (session.inTransaction()) await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, message: 'User already exists with this email.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const otp = generateOtp();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // 7. Create User
     const [user] = await UserModel.create(
       [
         {
@@ -166,10 +297,9 @@ export const register = async (req, res, next) => {
           otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
           mobile,
           address,
-          countryId,
           stateId,
           cityId,
-          collegeId,
+          collegeId: college._id,
           classId,
           admissionYear,
           signUpBy: 'email',
@@ -179,21 +309,32 @@ export const register = async (req, res, next) => {
       { session }
     );
 
-    await sendFormEmail(normalizedEmail, otp);
-
+    // 8. Commit and Cleanup
     await session.commitTransaction();
     session.endSession();
 
+    // 9. Fetch Populated Data for Response
+    const populatedUser = await UserModel.findById(user._id)
+      .populate('stateId', 'name')
+      .populate('cityId', 'name')
+      .populate('collegeId', 'name')
+      .populate('classId', 'name');
+
     return res.status(201).json({
+      success: true,
       message: 'User registered successfully. Please verify your email.',
+      data: populatedUser
     });
+
   } catch (error) {
-    await session.abortTransaction();
+    // FIX: Only abort if the transaction is still active
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     session.endSession();
     next(error);
   }
 };
-
 export const verifyEmail = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
