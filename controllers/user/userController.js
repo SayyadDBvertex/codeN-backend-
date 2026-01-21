@@ -199,10 +199,6 @@ const generateOtp = () => {
 // };
 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> b12b495d930749376ce0840f08014738738999ab
 export const register = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
