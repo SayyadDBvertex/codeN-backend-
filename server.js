@@ -167,10 +167,13 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: `http://localhost:${process.env.PORT || 4000}`,
-        description: 'Local Server',
+        url:
+          process.env.BASE_URL ||
+          `http://localhost:${process.env.PORT || 4000}`,
+        description: 'API Server',
       },
     ],
+
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -225,10 +228,13 @@ app.use('/api/tests', userTestRoutes);
 
 // Health check route
 app.get('/', (req, res) => {
+  const baseUrl =
+    process.env.BASE_URL || `http://localhost:${process.env.PORT || 4000}`;
+
   res.json({
     success: true,
     message: 'Server is running',
-    swagger: `http://localhost:${process.env.PORT || 4000}/api-docs`,
+    swagger: `${baseUrl}/api-docs`,
   });
 });
 
@@ -251,7 +257,12 @@ app.use((err, req, res, next) => {
 
 // Start Server
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📄 Swagger Docs: http://localhost:${PORT}/api-docs`);
+  console.log(
+    `📄 Swagger Docs: ${
+      process.env.BASE_URL || `http://localhost:${PORT}`
+    }/api-docs`
+  );
 });

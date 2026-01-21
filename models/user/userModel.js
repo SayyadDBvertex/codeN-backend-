@@ -1,5 +1,3 @@
-
-
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs'; // Password hashing ke liye zaroori hai
 

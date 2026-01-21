@@ -47,6 +47,12 @@ import { testLimiter, otpLimiter } from '../../middleware/limiter.js';
  *   name: User
  *   description: User Authentication & APIs
  */
+/**
+ * @swagger
+ * tags:
+ *   name: Videos
+ *   description: User Video APIs
+ */
 
 const userRouter = express.Router();
 
@@ -188,9 +194,46 @@ userRouter.post('/forgot-password', otpLimiter, forgetPassword);
 userRouter.post('/change-password', otpLimiter, changePassword);
 
 /* ================= USER ================= */
-
-// Video APIs
+/**
+ * @swagger
+ * /api/users/video/{videoId}:
+ *   get:
+ *     summary: Get single video details
+ *     tags: [Videos]
+ *     parameters:
+ *       - in: path
+ *         name: videoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Video detail
+ *       404:
+ *         description: Video not found
+ */
 userRouter.get('/video/:videoId', getVideoData);
+/**
+ * @swagger
+ * /api/users/chapter/{chapterId}/video:
+ *   get:
+ *     summary: Get all videos of a chapter
+ *     tags: [Videos]
+ *     parameters:
+ *       - in: path
+ *         name: chapterId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           example: active
+ *     responses:
+ *       200:
+ *         description: List of videos
+ */
 userRouter.get('/chapter/:chapterId/video', getChapterVideoByChapterId);
 
 // Profile update
