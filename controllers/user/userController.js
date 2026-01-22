@@ -209,6 +209,7 @@ export const register = async (req, res, next) => {
       email,
       mobile,
       address,
+      countryName, // 👈 user se aayega
       stateId,
       cityId,
       collegeName,
@@ -216,31 +217,76 @@ export const register = async (req, res, next) => {
       admissionYear,
       password,
     } = req.body;
-    if (classId === "") classId = null;
-    // 1. Basic Validation
-    if (!name || !email || !password || !stateId || !cityId || !collegeName) {
+
+    let finalClassId = classId;
+    if (finalClassId === '') finalClassId = null;
+
+    // 1️⃣ Basic Validation
+    if (
+      !name ||
+      !email ||
+      !password ||
+      !countryName ||
+      !stateId ||
+      !cityId ||
+      !collegeName
+    ) {
       if (session.inTransaction()) await session.abortTransaction();
       session.endSession();
       return res.status(400).json({
         success: false,
         message:
-          'All fields (Name, Email, Password, State, City, College Name) are required.',
+          'All fields (Name, Email, Password, Country, State, City, College Name) are required.',
       });
     }
 
-    // 2. Active State Check
-    const activeState = await State.findOne({ _id: stateId, isActive: true });
+    // 2️⃣ COUNTRY AUTO FIND-OR-CREATE
+    let country = await Country.findOne({
+      name: { $regex: new RegExp(`^${countryName.trim()}$`, 'i') },
+    });
+
+    if (!country) {
+      const [createdCountry] = await Country.create(
+        [
+          {
+            name: countryName.trim(),
+            isActive: true,
+          },
+        ],
+        { session }
+      );
+      country = createdCountry;
+    }
+
+    // Agar exist karti hai par inactive hai → activate kar do
+    if (!country.isActive) {
+      country.isActive = true;
+      await country.save({ session });
+    }
+
+    const countryId = country._id;
+
+    // 3️⃣ STATE VALIDATION (NO countryId)
+    const activeState = await State.findOne({
+      _id: stateId,
+      isActive: true,
+    });
+
     if (!activeState) {
       if (session.inTransaction()) await session.abortTransaction();
       session.endSession();
       return res.status(400).json({
         success: false,
-        message: 'Selected state is not active for registration.',
+        message: 'Selected state is not active.',
       });
     }
 
-    // 3. City Validation
-    const cityExists = await City.findOne({ _id: cityId, stateId });
+    // 4️⃣ CITY VALIDATION (ONLY stateId)
+    const cityExists = await City.findOne({
+      _id: cityId,
+      stateId: stateId,
+    });
+
     if (!cityExists) {
       if (session.inTransaction()) await session.abortTransaction();
       session.endSession();
@@ -250,7 +296,7 @@ export const register = async (req, res, next) => {
       });
     }
 
-    // 4. Dynamic College Logic
+    // 5️⃣ Dynamic College Logic
     let college = await College.findOne({
       name: { $regex: new RegExp(`^${collegeName.trim()}$`, 'i') },
       cityId,
@@ -271,24 +317,19 @@ export const register = async (req, res, next) => {
       college = createdColleges[0];
     }
 
-    // 5. Class Validation
-    // const classExists = await ClassModel.findById(classId);
-    // if (!classExists) {
-    //   if (session.inTransaction()) await session.abortTransaction();
-    //   session.endSession();
-    //   return res
-    //     .status(400)
-    //     .json({ success: false, message: 'Invalid class selected.' });
-    // }
-if (classId) { // <--- Ye if condition lagana zaroori hai
-  const classExists = await ClassModel.findById(classId);
-  if (!classExists) {
-    if (session.inTransaction()) await session.abortTransaction();
-    session.endSession();
-    return res.status(400).json({ success: false, message: 'Invalid class selected.' });
-  }
-}
-    // 6. Password & User Existence
+    // 6️⃣ Class Validation
+    if (finalClassId) {
+      const classExists = await ClassModel.findById(finalClassId);
+      if (!classExists) {
+        if (session.inTransaction()) await session.abortTransaction();
+        session.endSession();
+        return res
+          .status(400)
+          .json({ success: false, message: 'Invalid class selected.' });
+      }
+    }
+
+    // 7️⃣ Password & User Existence
     if (password.length < 6) {
       if (session.inTransaction()) await session.abortTransaction();
       session.endSession();
@@ -300,6 +341,7 @@ if (classId) { // <--- Ye if condition lagana zaroori hai
 
     const normalizedEmail = email.toLowerCase().trim();
     const existingUser = await UserModel.findOne({ email: normalizedEmail });
+
     if (existingUser) {
       if (session.inTransaction()) await session.abortTransaction();
       session.endSession();
@@ -309,10 +351,10 @@ if (classId) { // <--- Ye if condition lagana zaroori hai
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // const hashedPassword = await bcrypt.hash(password, 10);
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // 7. Create User
+    // 8️⃣ Create User
     const [user] = await UserModel.create(
       [
         {
@@ -323,10 +365,13 @@ if (classId) { // <--- Ye if condition lagana zaroori hai
           otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
           mobile,
           address,
+
+          countryId, // 👈 ONLY HERE
           stateId,
           cityId,
+
           collegeId: college._id,
-          classId,
+          classId: finalClassId,
           admissionYear,
           signUpBy: 'email',
           role: 'user',
@@ -335,12 +380,14 @@ if (classId) { // <--- Ye if condition lagana zaroori hai
       { session }
     );
 
-    // 8. Commit and Cleanup
+    // 9️⃣ Commit and Cleanup
     await session.commitTransaction();
     session.endSession();
     await sendFormEmail(normalizedEmail, otp);
-    // 9. Fetch Populated Data for Response
+
+    // 🔟 Populate for Response
     const populatedUser = await UserModel.findById(user._id)
+      .populate('countryId', 'name')
       .populate('stateId', 'name')
       .populate('cityId', 'name')
       .populate('collegeId', 'name')
@@ -352,7 +399,6 @@ if (classId) { // <--- Ye if condition lagana zaroori hai
       data: populatedUser,
     });
   } catch (error) {
-    // FIX: Only abort if the transaction is still active
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
@@ -360,6 +406,7 @@ if (classId) { // <--- Ye if condition lagana zaroori hai
     next(error);
   }
 };
+
 export const verifyEmail = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
@@ -655,6 +702,35 @@ export const changePassword = async (req, res, next) => {
   }
 };
 
+export const logout = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    // DB se token remove karo
+    const user = await UserModel.findByIdAndUpdate(
+      userId,
+      {
+        refreshToken: null, // ya token field jo tum use kar rahe ho
+      },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Logout successful',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getSlugByQuery = async (req, res, next) => {
   try {
     let { slug } = req.query;
@@ -768,23 +844,23 @@ export const editProfileOfUser = async (req, res, next) => {
       });
     }
 
-    // ✅ LOCATION VALIDATION (PRODUCTION CRITICAL)
-    const { countryId, stateId, cityId } = updateData;
+    // ✅ LOCATION VALIDATION (FIXED: no countryId check)
+    const { stateId, cityId } = updateData;
 
-    if (countryId && stateId && cityId) {
+    if (stateId && cityId) {
       const validCity = await City.findOne({
         _id: cityId,
         stateId,
-        countryId,
       });
 
       if (!validCity) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid country, state, city combination',
+          message: 'Invalid state and city combination',
         });
       }
     }
+
     // ✅ COLLEGE VALIDATION
     if (updateData.collegeId) {
       const validCollege = await College.findById(updateData.collegeId);

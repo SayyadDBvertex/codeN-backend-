@@ -28,9 +28,8 @@ export const protect = async (req, res, next) => {
         return next();
       }
 
-      // 🔹 Agar admin nahi mila, USER me check karo
       const user = await UserModel.findById(decoded.id).select(
-        '-password -otp -otpExpiresAt'
+        '-password -otp -otpExpiresAt +refreshToken'
       );
 
       if (user) {
@@ -38,6 +37,13 @@ export const protect = async (req, res, next) => {
           return res.status(403).json({
             success: false,
             message: 'User is blocked or inactive',
+          });
+        }
+
+        if (!user.refreshToken || user.refreshToken !== token) {
+          return res.status(401).json({
+            success: false,
+            message: 'Not authorized, token invalid or logged out',
           });
         }
 
