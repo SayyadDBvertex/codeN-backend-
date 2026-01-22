@@ -2,6 +2,12 @@ import mongoose from 'mongoose';
 
 const chapterSchema = new mongoose.Schema(
   {
+    courseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course',
+      required: true,
+    },
+
     subSubjectId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'SubSubject',

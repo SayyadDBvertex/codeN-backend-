@@ -9,6 +9,7 @@ import Topic from '../../../models/admin/Topic/topic.model.js';
 export const createChapter = async (req, res, next) => {
   try {
     const {
+      courseId,
       subSubjectId,
       topicId,
       name,
@@ -63,6 +64,7 @@ export const createChapter = async (req, res, next) => {
     }
 
     const chapter = await Chapter.create({
+      courseId, 
       subSubjectId,
       topicId,
       name: name.trim(),

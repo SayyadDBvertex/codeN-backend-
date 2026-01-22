@@ -5,11 +5,12 @@ import Question from '../../models/admin/MCQs/mcq.model.js';
 // @desc    Create New Test
 
 export const createTest = async (req, res, next) => {
+  console.log('Request Body:', req.body); // Debugging line
   try {
     const {
       month,
       academicYear,
-      courseId,
+      // courseId,
       testTitle,
       category,
       testMode,
@@ -21,39 +22,47 @@ export const createTest = async (req, res, next) => {
       timeLimit,
     } = req.body;
 
-    if (
-      !month ||
-      !academicYear ||
-      !courseId ||
-      !testTitle ||
-      !category ||
-      !testMode ||
-      !mcqLimit
-    ) {
+    if (!month)
+      return res.status(400).json({ success: false, message: 'Month missing' });
+
+    if (!academicYear)
       return res
         .status(400)
-        .json({ success: false, message: 'Missing required fields' });
-    }
+        .json({ success: false, message: 'Academic year missing' });
+
+    if (!testTitle)
+      return res
+        .status(400)
+        .json({ success: false, message: 'Test title missing' });
+
+    if (!category)
+      return res
+        .status(400)
+        .json({ success: false, message: 'Category missing' });
+
+    if (!testMode)
+      return res
+        .status(400)
+        .json({ success: false, message: 'Test mode missing' });
+
+    if (!mcqLimit)
+      return res
+        .status(400)
+        .json({ success: false, message: 'MCQ limit missing' });
 
     if (testMode === 'exam' && !timeLimit) {
       return res
         .status(400)
         .json({ success: false, message: 'Time limit required for Exam Mode' });
     }
+    const finalTimeLimit = testMode === 'exam' ? timeLimit : null;
 
     let questionFilter = { status: 'active' };
 
     if (category === 'grand') {
-      const allChapters = await Chapter.find({ courseId }).select('_id');
-
-      if (!allChapters.length) {
-        return res.status(404).json({
-          success: false,
-          message: 'No chapters found for this course',
-        });
-      }
-
-      questionFilter.chapterId = { $in: allChapters.map((c) => c._id) };
+      // koi filter mat lagao
+      // saare active questions uthao
+      questionFilter = { status: 'active' };
     }
 
     if (category === 'subject') {
@@ -109,7 +118,7 @@ export const createTest = async (req, res, next) => {
     const test = await Test.create({
       month,
       academicYear,
-      courseId,
+      // courseId: courseId || null,
       testTitle,
       category,
       testMode,
@@ -118,7 +127,7 @@ export const createTest = async (req, res, next) => {
       topics,
       chapters,
       mcqLimit,
-      timeLimit: testMode === 'exam' ? timeLimit : null,
+      timeLimit: finalTimeLimit,
       questions: mappedQuestions,
       createdBy: req.admin._id,
     });
@@ -149,7 +158,9 @@ export const getAllTests = async (req, res, next) => {
 
     const filter = {};
 
-    if (courseId) filter.courseId = courseId;
+    if (courseId && courseId !== 'null' && courseId !== 'undefined') {
+      filter.courseId = courseId;
+    }
     if (category) filter.category = category; // grand | subject
     if (testMode) filter.testMode = testMode; // regular | exam
     if (status) filter.status = status; // active | inactive
@@ -235,6 +246,9 @@ export const updateTest = async (req, res, next) => {
     // Exam mode validation
     if (test.testMode === 'exam' && updates.timeLimit === undefined) {
       updates.timeLimit = test.timeLimit;
+    }
+    if (test.testMode === 'regular') {
+      delete updates.timeLimit;
     }
 
     updates.updatedBy = req.admin._id;
