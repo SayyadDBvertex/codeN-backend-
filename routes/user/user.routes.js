@@ -135,10 +135,11 @@ import {
   getMySubscription,
   buySubscription,
   postRating,
-  logout,
-  getMe,
   getAllSubSubjectsForUser,
   getCourseListSimple,
+  logout,
+   updateVideoProgress,
+  getDailyMCQ
 } from '../../controllers/user/userController.js';
 
 import { getAboutUs } from '../../controllers/admin/AboutUs/aboutus.controller.js';
@@ -160,6 +161,7 @@ import {
   getSingleTopicForUser,
   getTopicsWithChaptersForUser,
   getTopicVideosForUser,
+  getCustomPracticeMCQs
 } from '../../controllers/user/userController.js';
 
 import { testLimiter, otpLimiter } from '../../middleware/limiter.js';
@@ -514,7 +516,10 @@ userRouter.get('/topics', getAllTopicsForUser);
 userRouter.get('/topics/chapter/:chapterId', getTopicsByChapterForUser);
 userRouter.get('/topics/:id', getSingleTopicForUser);
 userRouter.get('/get-chapters/:subSubjectId', getChapterBySubSubjectId);
-userRouter.get('/topic-videos/:topicId', getTopicVideosForUser);
+userRouter.get('/topic-videos/:topicId', protect,getTopicVideosForUser);
+userRouter.post('/update-progress', protect, updateVideoProgress);
+userRouter.post('/generate-custom-test',getCustomPracticeMCQs);
+userRouter.get('/daily-mcq', getDailyMCQ);
 
 /* ================= MCQ / TEST ================= */
 
