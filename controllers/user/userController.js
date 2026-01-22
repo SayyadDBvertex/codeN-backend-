@@ -351,7 +351,7 @@ export const register = async (req, res, next) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // const hashedPassword = await bcrypt.hash(password, 10);
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     // 8️⃣ Create User
@@ -360,7 +360,7 @@ export const register = async (req, res, next) => {
         {
           name,
           email: normalizedEmail,
-          password: hashedPassword,
+          password: password,
           otp,
           otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
           mobile,
@@ -844,23 +844,23 @@ export const editProfileOfUser = async (req, res, next) => {
       });
     }
 
-    // ✅ LOCATION VALIDATION (PRODUCTION CRITICAL)
-    const { countryId, stateId, cityId } = updateData;
+    // ✅ LOCATION VALIDATION (FIXED: no countryId check)
+    const { stateId, cityId } = updateData;
 
-    if (countryId && stateId && cityId) {
+    if (stateId && cityId) {
       const validCity = await City.findOne({
         _id: cityId,
         stateId,
-        countryId,
       });
 
       if (!validCity) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid country, state, city combination',
+          message: 'Invalid state and city combination',
         });
       }
     }
+
     // ✅ COLLEGE VALIDATION
     if (updateData.collegeId) {
       const validCollege = await College.findById(updateData.collegeId);
