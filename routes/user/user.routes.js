@@ -135,12 +135,9 @@ import {
   getMySubscription,
   buySubscription,
   postRating,
-<<<<<<< HEAD
   getAllSubSubjectsForUser,
-  getCourseListSimple
-=======
+  getCourseListSimple,
   logout,
->>>>>>> eebdc635869a94ce19476463432673f15e954de4
 } from '../../controllers/user/userController.js';
 
 import { getAboutUs } from '../../controllers/admin/AboutUs/aboutus.controller.js';
