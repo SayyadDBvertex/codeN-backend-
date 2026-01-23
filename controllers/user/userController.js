@@ -23,7 +23,6 @@ import Course from '../../models/admin/Course/course.model.js';
 import Video from '../../models/admin/Video/video.model.js';
 import VideoProgress from '../../models/admin/Video/videoprogess.js';
 
-
 export const loginByGoogle = async (req, res, next) => {
   try {
     const { access_token } = req.body;
@@ -241,36 +240,35 @@ export const register = async (req, res, next) => {
       });
     }
 
-// 2️⃣ COUNTRY AUTO FIND-OR-CREATE
-let country = null;
-let countryId = null;
+    // 2️⃣ COUNTRY AUTO FIND-OR-CREATE
+    let country = null;
+    let countryId = null;
 
-if (countryName && countryName.trim() !== '') {
-  country = await Country.findOne({
-    name: { $regex: new RegExp(`^${countryName.trim()}$`, 'i') },
-  });
+    if (countryName && countryName.trim() !== '') {
+      country = await Country.findOne({
+        name: { $regex: new RegExp(`^${countryName.trim()}$`, 'i') },
+      });
 
-  if (!country) {
-    const [createdCountry] = await Country.create(
-      [
-        {
-          name: countryName.trim(),
-          isActive: true,
-        },
-      ],
-      { session }
-    );
-    country = createdCountry;
-  }
+      if (!country) {
+        const [createdCountry] = await Country.create(
+          [
+            {
+              name: countryName.trim(),
+              isActive: true,
+            },
+          ],
+          { session }
+        );
+        country = createdCountry;
+      }
 
-  if (!country.isActive) {
-    country.isActive = true;
-    await country.save({ session });
-  }
+      if (!country.isActive) {
+        country.isActive = true;
+        await country.save({ session });
+      }
 
-  countryId = country._id;
-}
-
+      countryId = country._id;
+    }
 
     // 3️⃣ STATE VALIDATION (NO countryId)
     const activeState = await State.findOne({
@@ -736,7 +734,6 @@ export const logout = async (req, res, next) => {
     next(error);
   }
 };
-// userController.js
 
 export const getMe = async (req, res, next) => {
   try {
@@ -1014,6 +1011,7 @@ export const getSubjectsByUser = async (req, res) => {
     });
   }
 };
+
 export const getAllsubjects = async (req, res) => {
   try {
     const { courseId } = req.query;
@@ -1082,24 +1080,43 @@ export const getSubSubjectsBySubject = async (req, res) => {
       });
     }
 
-    // 1. Database se data fetch karein (image field ko include kiya hai)
+    // 1️⃣ Sub-subjects fetch
     const subSubjects = await SubSubject.find({
       subjectId: subjectId,
       status: 'active',
     })
-      .select('name image order') // image field select kari
-      .sort({ order: 1 });
+      .select('name image order')
+      .sort({ order: 1 })
+      .lean();
 
-    // 2. Base URL banayein images ke liye
     const baseUrl = `${req.protocol}://${req.get('host')}/`;
 
-    // 3. Data transform karein
-    const formattedData = subSubjects.map((item) => ({
-      _id: item._id,
-      name: item.name,
-      order: item.order,
-      image: item.image ? `${baseUrl}${item.image}` : null, // Full Image Path
-    }));
+    // 2️⃣ Har Sub-Subject ke liye Topic + Video Count
+    const formattedData = await Promise.all(
+      subSubjects.map(async (item) => {
+        // Sub-subject ke saare topics
+        const topics = await Topic.find({
+          subSubjectId: item._id,
+          status: 'active',
+        }).select('_id');
+
+        const topicIds = topics.map((t) => t._id);
+
+        // In topics ke total videos
+        const totalVideos = await Video.countDocuments({
+          topicId: { $in: topicIds },
+          status: 'active',
+        });
+        const VideoCount = totalVideos;
+        return {
+          _id: item._id,
+          name: item.name,
+          order: item.order,
+          image: item.image ? `${baseUrl}${item.image}` : null,
+          VideoCount, // 👈 NEW FIELD
+        };
+      })
+    );
 
     res.status(200).json({
       success: true,
@@ -1496,12 +1513,14 @@ export const submitTest = async (req, res) => {
 export const getActivePlans = async (req, res, next) => {
   try {
     // Pricing ke hisab se sort kar diya taaki sasta plan pehle dikhe
-    const plans = await SubscriptionPlan.find({ isActive: true }).sort({ "pricing.0.price": 1 });
+    const plans = await SubscriptionPlan.find({ isActive: true }).sort({
+      'pricing.0.price': 1,
+    });
 
     res.status(200).json({
       success: true,
       count: plans.length,
-      data: plans
+      data: plans,
     });
   } catch (error) {
     next(error);
@@ -1518,14 +1537,15 @@ export const getMySubscription = async (req, res) => {
       .populate('subscription.plan_id', 'name features');
 
     if (!user) {
-        return res.status(404).json({ status: false, message: "User not found" });
+      return res.status(404).json({ status: false, message: 'User not found' });
     }
 
     // Check if subscription exists and is NOT expired
     const today = new Date();
-    const hasActivePlan = user.subscription &&
-                          user.subscription.isActive &&
-                          user.subscription.endDate > today;
+    const hasActivePlan =
+      user.subscription &&
+      user.subscription.isActive &&
+      user.subscription.endDate > today;
 
     if (!hasActivePlan) {
       return res.status(200).json({
@@ -1537,11 +1557,10 @@ export const getMySubscription = async (req, res) => {
     }
 
     res.status(200).json({
-        status: true,
-        isSubscribed: true,
-        data: user
+      status: true,
+      isSubscribed: true,
+      data: user,
     });
-
   } catch (error) {
     res.status(500).json({ status: false, message: error.message });
   }
@@ -1657,7 +1676,9 @@ export const postRating = async (req, res) => {
     const userId = req.user._id;
 
     if (!rating || !videoId) {
-      return res.status(400).json({ success: false, message: 'Rating and VideoId are required' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Rating and VideoId are required' });
     }
 
     // Update if already exists, else create new (Optional logic)
@@ -1763,8 +1784,6 @@ export const getCourseListSimple = async (req, res, next) => {
 //     res.status(500).json({ success: false, message: error.message });
 //   }
 // };
-
-
 
 // export const getTopicVideosForUser = async (req, res) => {
 //   try {
@@ -1891,12 +1910,19 @@ export const getTopicVideosForUser = async (req, res) => {
     const userId = req.user._id;
 
     const topic = await Topic.findById(topicId).select('name').lean();
-    const chapters = await Chapter.find({ topicId, status: 'active' }).sort({ order: 1 }).lean();
+    const chapters = await Chapter.find({ topicId, status: 'active' })
+      .sort({ order: 1 })
+      .lean();
 
     // Aggregation: Videos + Progress + Ratings
     let videos = await Video.aggregate([
       // 1. Topic ke videos filter karein
-      { $match: { topicId: new mongoose.Types.ObjectId(topicId), status: 'active' } },
+      {
+        $match: {
+          topicId: new mongoose.Types.ObjectId(topicId),
+          status: 'active',
+        },
+      },
 
       // 2. Progress Lookup
       {
@@ -1904,10 +1930,19 @@ export const getTopicVideosForUser = async (req, res) => {
           from: 'videoprogresses',
           let: { vId: '$_id' },
           pipeline: [
-            { $match: { $expr: { $and: [ { $eq: ['$videoId', '$$vId'] }, { $eq: ['$userId', userId] } ] } } }
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$videoId', '$$vId'] },
+                    { $eq: ['$userId', userId] },
+                  ],
+                },
+              },
+            },
           ],
-          as: 'progressInfo'
-        }
+          as: 'progressInfo',
+        },
       },
 
       // 3. Ratings Lookup (Iske bina totalReviews error dega)
@@ -1916,32 +1951,45 @@ export const getTopicVideosForUser = async (req, res) => {
           from: 'ratings',
           localField: '_id',
           foreignField: 'videoId',
-          as: 'allRatings'
-        }
+          as: 'allRatings',
+        },
       },
 
       // 4. Fields Calculation (Null values ko 0 mein badalna)
       {
         $addFields: {
-          statusTag: { $ifNull: [{ $arrayElemAt: ['$progressInfo.status', 0] }, 'unattended'] },
-          watchPercentage: { $ifNull: [{ $arrayElemAt: ['$progressInfo.percentage', 0] }, 0] },
-          lastWatchTime: { $ifNull: [{ $arrayElemAt: ['$progressInfo.watchTime', 0] }, 0] },
+          statusTag: {
+            $ifNull: [
+              { $arrayElemAt: ['$progressInfo.status', 0] },
+              'unattended',
+            ],
+          },
+          watchPercentage: {
+            $ifNull: [{ $arrayElemAt: ['$progressInfo.percentage', 0] }, 0],
+          },
+          lastWatchTime: {
+            $ifNull: [{ $arrayElemAt: ['$progressInfo.watchTime', 0] }, 0],
+          },
           avgRating: { $ifNull: [{ $avg: '$allRatings.rating' }, 0] }, // Null to 0
-          totalReviews: { $size: { $ifNull: ['$allRatings', []] } }    // Missing array to 0
-        }
+          totalReviews: { $size: { $ifNull: ['$allRatings', []] } }, // Missing array to 0
+        },
       },
-      { $project: { progressInfo: 0, allRatings: 0 } }
+      { $project: { progressInfo: 0, allRatings: 0 } },
     ]);
 
     // DEBUG: Terminal mein check karein ki kitne videos mile
-    console.log("Total Videos Found before filter:", videos.length);
+    console.log('Total Videos Found before filter:', videos.length);
 
     // 5. Filtering Logic
     if (filterType && filterType !== 'all') {
-      const typeMap = { 'completed': 'completed', 'paused': 'watching', 'unattended': 'unattended' };
+      const typeMap = {
+        completed: 'completed',
+        paused: 'watching',
+        unattended: 'unattended',
+      };
       const targetStatus = typeMap[filterType];
       if (targetStatus) {
-        videos = videos.filter(v => v.statusTag === targetStatus);
+        videos = videos.filter((v) => v.statusTag === targetStatus);
       }
     }
 
@@ -1950,36 +1998,35 @@ export const getTopicVideosForUser = async (req, res) => {
     //   const chapterVideos = videos.filter(v =>
     //     v.chapterId && v.chapterId.toString() === chapter._id.toString()
     //   );
-    const groupedData = chapters.map(chapter => {
-  // Debug: Check karein IDs match ho rahi hain ya nahi
-  const chapterVideos = videos.filter(v => {
-    if (!v.chapterId) return false;
-    return v.chapterId.toString() === chapter._id.toString();
-  });
+    const groupedData = chapters.map((chapter) => {
+      // Debug: Check karein IDs match ho rahi hain ya nahi
+      const chapterVideos = videos.filter((v) => {
+        if (!v.chapterId) return false;
+        return v.chapterId.toString() === chapter._id.toString();
+      });
 
-  return {
-    chapterId: chapter._id,
-    chapterName: chapter.name,
-    videos: chapterVideos
-  };
-});
+      return {
+        chapterId: chapter._id,
+        chapterName: chapter.name,
+        videos: chapterVideos,
+      };
+    });
 
-
-      // return {
-      //   chapterId: chapter._id,
-      //   chapterName: chapter.name,
-      //   videos: chapterVideos
-      // };
+    // return {
+    //   chapterId: chapter._id,
+    //   chapterName: chapter.name,
+    //   videos: chapterVideos
+    // };
     // }).filter(group => group.videos.length > 0); // Sirf wahi chapters dikhao jinme videos hain
-const finalData = groupedData.filter(group => group.videos.length > 0);
+    const finalData = groupedData.filter((group) => group.videos.length > 0);
     res.status(200).json({
       success: true,
       topicName: topic?.name,
-      totalVideosCount: videos.length, // Flutter dev ke liye helpful
-      data: groupedData
+      // totalVideosCount: videos.length,
+      data: finalData,
     });
   } catch (error) {
-    console.error("Aggregation Error:", error);
+    console.error('Aggregation Error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -2002,7 +2049,7 @@ export const updateVideoProgress = async (req, res) => {
         watchTime,
         totalDuration,
         percentage: Math.round(percentage),
-        status
+        status,
       },
       { upsert: true, new: true } // Agar record nahi hai toh naya bana dega
     );
@@ -2012,9 +2059,6 @@ export const updateVideoProgress = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-
-
 
 /**
  * @desc    Generate Custom Test (Difficulty + Tag + Subject + Mode)
@@ -2026,12 +2070,14 @@ export const getCustomPracticeMCQs = async (req, res, next) => {
     const { subjectId, tagId, difficulty, mode } = req.body;
 
     if (!subjectId) {
-      return res.status(400).json({ success: false, message: 'Subject ID is required' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Subject ID is required' });
     }
 
     const filter = {
-        status: 'active',
-        subjectId: new mongoose.Types.ObjectId(subjectId)
+      status: 'active',
+      subjectId: new mongoose.Types.ObjectId(subjectId),
     };
 
     if (tagId) filter.tagId = new mongoose.Types.ObjectId(tagId);
@@ -2047,8 +2093,8 @@ export const getCustomPracticeMCQs = async (req, res, next) => {
           from: 'tags', // Aapke Tags collection ka naam (check in MongoDB)
           localField: 'tagId',
           foreignField: '_id',
-          as: 'tagDetails'
-        }
+          as: 'tagDetails',
+        },
       },
       {
         $project: {
@@ -2061,9 +2107,9 @@ export const getCustomPracticeMCQs = async (req, res, next) => {
           negativeMarks: 1,
           mode: 1,
           // Tag details ko readable format mein bhejna
-          tag: { $arrayElemAt: ["$tagDetails", 0] }
-        }
-      }
+          tag: { $arrayElemAt: ['$tagDetails', 0] },
+        },
+      },
     ]);
 
     res.status(200).json({
@@ -2072,9 +2118,8 @@ export const getCustomPracticeMCQs = async (req, res, next) => {
       mode: mode || 'regular',
       isTimerRequired: mode === 'exam',
       timerMinutes: 20,
-      data: mcqs
+      data: mcqs,
     });
-
   } catch (error) {
     next(error);
   }
@@ -2085,12 +2130,16 @@ export const getDailyMCQ = async (req, res, next) => {
     const dateString = today.toISOString().split('T')[0]; // Format: 2024-05-20
 
     // Date ko seed number mein badalna taaki poore din ek hi question dikhe
-    const seed = dateString.split('-').reduce((acc, val) => acc + parseInt(val), 0);
+    const seed = dateString
+      .split('-')
+      .reduce((acc, val) => acc + parseInt(val), 0);
 
     const count = await MCQ.countDocuments({ status: 'active' });
 
     if (count === 0) {
-      return res.status(404).json({ success: false, message: 'No active MCQs found' });
+      return res
+        .status(404)
+        .json({ success: false, message: 'No active MCQs found' });
     }
 
     const dailyIndex = seed % count;
