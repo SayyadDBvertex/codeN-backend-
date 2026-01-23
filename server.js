@@ -1,5 +1,3 @@
-
-
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -51,6 +49,7 @@ const uploadDirs = [
   './uploads/chapter-image',
   './uploads/mcq-images',
   './uploads/admin-profile',
+  './uploads/user-profile',
 ];
 
 uploadDirs.forEach((dir) => {
