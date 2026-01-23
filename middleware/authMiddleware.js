@@ -69,3 +69,17 @@ export const protect = async (req, res, next) => {
     message: 'Not authorized, no token',
   });
 };
+
+/**
+ * Admin-only middleware
+ */
+export const adminOnly = (req, res, next) => {
+  if (req.admin) {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    message: 'Access denied: Admins only',
+  });
+};

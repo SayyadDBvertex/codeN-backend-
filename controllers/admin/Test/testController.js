@@ -1,215 +1,223 @@
 import Test from '../../../models/admin/Test/testModel.js';
-import {
-  getGrandTestQuestions,
-  getSubjectTestQuestions,
-  getCourseFilters,
-  validateSubjectTestFilters,
-  countAvailableQuestions,
-  formatTestResponse,
-  formatTestForAttempt,
-} from '../../../services/testService.js';
+import Subject from '../../../models/admin/Subject/subject.model.js';
+import SubSubject from '../../../models/admin/Sub-subject/subSubject.model.js';
+import Topic from '../../../models/admin/Topic/topic.model.js';
+import Chapter from '../../../models/admin/Chapter/chapter.model.js';
+import MCQ from '../../../models/admin/MCQs/mcq.model.js';
 
 /**
- * @desc    Create a new Test (Grand or Subject)
- * @route   POST /api/admin/tests
- * @access  Private/Admin
+ * @desc   Create Test
+ * @route  POST /api/admin/tests/create
+ *
  */
-export const createTest = async (req, res, next) => {
+export const createTest = async (req, res) => {
+  console.log('🔥 CREATE TEST HIT');
+  console.log('👉 BODY:', req.body);
+
   try {
     const {
       month,
       academicYear,
       testTitle,
+      courseId,
       category,
       testMode,
-      courseId,
       subjects = [],
       subSubjects = [],
       topics = [],
       chapters = [],
       mcqLimit,
       timeLimit,
-      description = '',
+      description,
     } = req.body;
 
-    // ===== VALIDATION =====
-
-    // Common validations
-    if (!month || !academicYear || !testTitle || !category || !testMode) {
+    // ===== BASIC VALIDATION =====
+    if (!month || !academicYear || !testTitle || !courseId) {
       return res.status(400).json({
         success: false,
-        message:
-          'Month, Academic Year, Test Title, Category, and Test Mode are required',
+        message: 'Month, Academic Year, Test Title and Course are required',
       });
     }
 
     if (!mcqLimit || mcqLimit < 1) {
       return res.status(400).json({
         success: false,
-        message: 'MCQ Limit must be a positive number',
+        message: 'MCQ Limit must be greater than 0',
       });
     }
 
-    // Grand Test specific validation
-    if (category === 'grand') {
-      if (!courseId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Course ID is required for Grand Test',
-        });
-      }
-    }
-
-    // Subject Test specific validation
-    if (category === 'subject') {
-      try {
-        validateSubjectTestFilters({ subjects, subSubjects, topics, chapters });
-      } catch (error) {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-        });
-      }
-    }
-
-    // Exam Mode validation
     if (testMode === 'exam' && (!timeLimit || timeLimit < 1)) {
       return res.status(400).json({
         success: false,
-        message: 'Time Limit (in minutes) is required for Exam Mode',
+        message: 'Time limit is required for Exam Mode',
       });
     }
 
-    // ===== GET QUESTIONS =====
-    let questions;
+    if (category === 'subject') {
+      const hasFilter =
+        subjects.length ||
+        subSubjects.length ||
+        topics.length ||
+        chapters.length;
 
-    try {
-      if (category === 'grand') {
-        questions = await getGrandTestQuestions(courseId, mcqLimit);
-      } else {
-        questions = await getSubjectTestQuestions(
-          { subjects, subSubjects, topics, chapters },
-          mcqLimit
-        );
+      if (!hasFilter) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'At least one Subject, Sub-subject, Topic, or Chapter is required',
+        });
       }
-    } catch (error) {
+    }
+
+    // ===== FETCH MCQs =====
+    let mcqFilter = { courseId };
+
+    // 🔴 YAHI CHANGE HAI (field names fix)
+    if (category === 'subject') {
+      if (subjects.length) mcqFilter.subject = { $in: subjects };
+      if (subSubjects.length) mcqFilter.subSubject = { $in: subSubjects };
+      if (topics.length) mcqFilter.topic = { $in: topics };
+      if (chapters.length) mcqFilter.chapter = { $in: chapters };
+    }
+
+    console.log('🔎 MCQ FILTER:', mcqFilter);
+
+    let mcqs = await MCQ.find(mcqFilter).select('_id');
+
+    if (!mcqs.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'No MCQs found for selected criteria',
+      });
+    }
+
+    // 🔴 YAHI CHANGE HAI (strict limit check)
+    if (mcqs.length < mcqLimit) {
       return res.status(400).json({
         success: false,
-        message: error.message,
+        message: `Only ${mcqs.length} MCQs available, but ${mcqLimit} requested`,
       });
     }
 
+    // Shuffle & limit
+    mcqs = mcqs.sort(() => 0.5 - Math.random()).slice(0, mcqLimit);
+
+    // 🔴 YAHI CHANGE HAI (sirf IDs rakho)
+    const mcqIds = mcqs.map((m) => m._id);
+
+    console.log('📊 MCQS FOUND:', mcqIds.length);
+    console.log('🧩 MCQ IDS:', mcqIds);
+
     // ===== CREATE TEST =====
-    const testData = {
+    const test = await Test.create({
       month,
       academicYear,
       testTitle,
+      courseId,
       category,
       testMode,
-      courseId: category === 'grand' ? courseId : null,
-      subjects: category === 'subject' ? subjects : [],
-      subSubjects: category === 'subject' ? subSubjects : [],
-      topics: category === 'subject' ? topics : [],
-      chapters: category === 'subject' ? chapters : [],
+      subjects,
+      subSubjects,
+      topics,
+      chapters,
       mcqLimit,
       timeLimit: testMode === 'exam' ? timeLimit : null,
-      questions,
-      status: 'active',
+      mcqs: mcqIds, // 🔴 change
+      totalQuestions: mcqIds.length, // 🔴 change
       description,
-      createdBy: req.admin?._id || req.user?._id, // from authMiddleware
-    };
+    });
 
-    const test = await Test.create(testData);
-
-    // Populate references
-    await test.populate(['courseId', 'createdBy']);
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Test created successfully',
-      data: formatTestResponse(test),
+      data: test,
     });
   } catch (error) {
     console.error('Create Test Error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: error.message || 'Error creating test',
+      message: 'Internal server error',
     });
   }
 };
 
 /**
- * @desc    Get all tests with filters
- * @route   GET /api/admin/tests
- * @access  Private/Admin
+ * @desc   Get Course Filters
+ * @route  GET /api/admin/tests/filters/:courseId
  */
-export const getAllTests = async (req, res, next) => {
+export const getCourseFilters = async (req, res) => {
   try {
-    const { page = 1, limit = 10, category, status, testMode } = req.query;
+    const { courseId } = req.params;
 
-    // Build filter query
-    let filter = {};
+    const subjects = await Subject.find({ courseId }).select('_id name');
+    const subSubjects = await SubSubject.find({ courseId }).select('_id name');
+    const topics = await Topic.find({ courseId }).select('_id name');
+    const chapters = await Chapter.find({ courseId }).select('_id name');
 
-    if (category && ['grand', 'subject'].includes(category)) {
-      filter.category = category;
-    }
+    res.json({
+      success: true,
+      data: { subjects, subSubjects, topics, chapters },
+    });
+  } catch (error) {
+    console.error('Filters Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch filters',
+    });
+  }
+};
 
-    if (status && ['active', 'inactive', 'draft'].includes(status)) {
-      filter.status = status;
-    }
+/**
+ * @desc   Get All Tests (with pagination)
+ * @route  GET /api/admin/tests
+ */
+export const getAllTests = async (req, res) => {
+  try {
+    const { category, status, testMode, page = 1, limit = 10 } = req.query;
 
-    if (testMode && ['regular', 'exam'].includes(testMode)) {
-      filter.testMode = testMode;
-    }
+    const filter = {};
+    if (category) filter.category = category;
+    if (status) filter.status = status;
+    if (testMode) filter.testMode = testMode;
 
-    // Pagination
-    const pageNum = Math.max(1, parseInt(page));
-    const limitNum = Math.max(1, Math.min(100, parseInt(limit)));
-    const skip = (pageNum - 1) * limitNum;
+    const skip = (page - 1) * limit;
 
-    // Fetch tests
     const tests = await Test.find(filter)
-      .populate('courseId', 'name')
-      .populate('createdBy', 'firstName lastName email')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limitNum);
+      .limit(Number(limit));
 
-    // Get total count
     const total = await Test.countDocuments(filter);
 
     res.json({
       success: true,
-      data: tests.map(formatTestResponse),
+      data: tests,
       pagination: {
         total,
-        page: pageNum,
-        pages: Math.ceil(total / limitNum),
-        limit: limitNum,
+        pages: Math.ceil(total / limit),
       },
     });
   } catch (error) {
-    console.error('Get All Tests Error:', error);
+    console.error('Get Tests Error:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Error fetching tests',
+      message: 'Failed to fetch tests',
     });
   }
 };
 
 /**
- * @desc    Get single test by ID
- * @route   GET /api/admin/tests/:testId
- * @access  Private/Admin
+ * @desc   Get Single Test
+ * @route  GET /api/admin/tests/:id
  */
-export const getTestById = async (req, res, next) => {
+export const getSingleTest = async (req, res) => {
   try {
-    const { testId } = req.params;
-
-    const test = await Test.findById(testId)
+    const test = await Test.findById(req.params.id)
       .populate('courseId', 'name')
-      .populate('createdBy', 'firstName lastName email')
-      .populate('updatedBy', 'firstName lastName email');
+      .populate('subjects', 'name')
+      .populate('subSubjects', 'name')
+      .populate('topics', 'name')
+      .populate('chapters', 'name');
 
     if (!test) {
       return res.status(404).json({
@@ -223,144 +231,21 @@ export const getTestById = async (req, res, next) => {
       data: test,
     });
   } catch (error) {
-    console.error('Get Test By ID Error:', error);
+    console.error('Get Single Test Error:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Error fetching test',
+      message: 'Failed to fetch test',
     });
   }
 };
 
 /**
- * @desc    Get test with questions for user attempt
- * @route   GET /api/admin/tests/:testId/attempt
- * @access  Private/User
+ * @desc   Delete Test
+ * @route  DELETE /api/admin/tests/:id
  */
-export const getTestForAttempt = async (req, res, next) => {
+export const deleteTest = async (req, res) => {
   try {
-    const { testId } = req.params;
-
-    const test = await Test.findById(testId).where('status').equals('active');
-
-    if (!test) {
-      return res.status(404).json({
-        success: false,
-        message: 'Test not found or is inactive',
-      });
-    }
-
-    res.json({
-      success: true,
-      data: formatTestForAttempt(test),
-    });
-  } catch (error) {
-    console.error('Get Test For Attempt Error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Error fetching test',
-    });
-  }
-};
-
-/**
- * @desc    Get available filters for creating Subject Test
- * @route   GET /api/admin/tests/filters/:courseId
- * @access  Private/Admin
- */
-export const getTestFilters = async (req, res, next) => {
-  try {
-    const { courseId } = req.params;
-
-    if (!courseId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Course ID is required',
-      });
-    }
-
-    const filters = await getCourseFilters(courseId);
-
-    res.json({
-      success: true,
-      data: filters,
-    });
-  } catch (error) {
-    console.error('Get Test Filters Error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Error fetching filters',
-    });
-  }
-};
-
-/**
- * @desc    Preview available questions count
- * @route   POST /api/admin/tests/preview
- * @access  Private/Admin
- */
-export const previewTestQuestions = async (req, res, next) => {
-  try {
-    const {
-      category,
-      courseId,
-      subjects = [],
-      subSubjects = [],
-      topics = [],
-      chapters = [],
-      mcqLimit,
-    } = req.body;
-
-    if (!category || !mcqLimit) {
-      return res.status(400).json({
-        success: false,
-        message: 'Category and MCQ Limit are required',
-      });
-    }
-
-    try {
-      const count = await countAvailableQuestions(
-        { subjects, subSubjects, topics, chapters },
-        category
-      );
-
-      res.json({
-        success: true,
-        data: {
-          availableQuestions: count,
-          requestedQuestions: mcqLimit,
-          canCreate: count >= mcqLimit,
-          message:
-            count >= mcqLimit
-              ? `Test can be created with ${mcqLimit} questions`
-              : `Only ${count} questions available. Need at least ${mcqLimit}`,
-        },
-      });
-    } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-  } catch (error) {
-    console.error('Preview Test Questions Error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Error previewing test questions',
-    });
-  }
-};
-
-/**
- * @desc    Update test
- * @route   PUT /api/admin/tests/:testId
- * @access  Private/Admin
- */
-export const updateTest = async (req, res, next) => {
-  try {
-    const { testId } = req.params;
-    const { testTitle, mcqLimit, timeLimit, status, description } = req.body;
-
-    const test = await Test.findById(testId);
+    const test = await Test.findById(req.params.id);
 
     if (!test) {
       return res.status(404).json({
@@ -369,49 +254,7 @@ export const updateTest = async (req, res, next) => {
       });
     }
 
-    // Update allowed fields
-    if (testTitle) test.testTitle = testTitle;
-    if (description) test.description = description;
-    if (mcqLimit) test.mcqLimit = mcqLimit;
-    if (timeLimit && test.testMode === 'exam') test.timeLimit = timeLimit;
-    if (status) test.status = status;
-
-    test.updatedBy = req.admin?._id || req.user?._id;
-
-    await test.save();
-    await test.populate(['courseId', 'createdBy', 'updatedBy']);
-
-    res.json({
-      success: true,
-      message: 'Test updated successfully',
-      data: formatTestResponse(test),
-    });
-  } catch (error) {
-    console.error('Update Test Error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Error updating test',
-    });
-  }
-};
-
-/**
- * @desc    Delete test
- * @route   DELETE /api/admin/tests/:testId
- * @access  Private/Admin
- */
-export const deleteTest = async (req, res, next) => {
-  try {
-    const { testId } = req.params;
-
-    const test = await Test.findByIdAndDelete(testId);
-
-    if (!test) {
-      return res.status(404).json({
-        success: false,
-        message: 'Test not found',
-      });
-    }
+    await test.deleteOne();
 
     res.json({
       success: true,
@@ -421,18 +264,7 @@ export const deleteTest = async (req, res, next) => {
     console.error('Delete Test Error:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Error deleting test',
+      message: 'Failed to delete test',
     });
   }
-};
-
-export default {
-  createTest,
-  getAllTests,
-  getTestById,
-  getTestForAttempt,
-  getTestFilters,
-  previewTestQuestions,
-  updateTest,
-  deleteTest,
 };
