@@ -136,6 +136,7 @@ import {
   buySubscription,
   postRating,
   getAllSubSubjectsForUser,
+  getChaptersByTopicForUser,
   getMe,
   getCourseListSimple,
   logout,
@@ -515,7 +516,7 @@ userRouter.get(
   '/topics-with-chapters/sub-subject/:subSubjectId',
   getTopicsWithChaptersForUser
 );
-
+userRouter.get('/chapters-by-topic/:topicId', getChaptersByTopicForUser);
 userRouter.get('/topics', getAllTopicsForUser);
 userRouter.get('/topics/chapter/:chapterId', getTopicsByChapterForUser);
 userRouter.get('/topics/:id', getSingleTopicForUser);

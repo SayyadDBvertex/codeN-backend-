@@ -1435,6 +1435,103 @@ export const getSingleTopicForUser = async (req, res) => {
     });
   }
 };
+export const getChaptersByTopicForUser = async (req, res) => {
+  try {
+    const { topicId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(topicId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid topicId',
+      });
+    }
+
+    // 1️⃣ Fetch Chapters
+    const chapters = await Chapter.find({
+      topicId,
+      status: 'active',
+    })
+      .select('_id name order image') // 👈 image add
+      .sort({ order: 1 })
+      .lean();
+
+    const chapterIds = chapters.map((c) => c._id);
+
+    // 2️⃣ MCQ Count per Chapter
+    const mcqCounts = await MCQ.aggregate([
+      {
+        $match: {
+          chapterId: { $in: chapterIds },
+          status: 'active',
+        },
+      },
+      {
+        $group: {
+          _id: '$chapterId',
+          totalMcq: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // 3️⃣ Rating per Chapter (from MCQs avg rating OR Video ratings if needed)
+    const ratings = await Rating.aggregate([
+      {
+        $lookup: {
+          from: 'videos',
+          localField: 'videoId',
+          foreignField: '_id',
+          as: 'video',
+        },
+      },
+      { $unwind: '$video' },
+      {
+        $match: {
+          'video.chapterId': { $in: chapterIds },
+        },
+      },
+      {
+        $group: {
+          _id: '$video.chapterId',
+          avgRating: { $avg: '$rating' },
+        },
+      },
+    ]);
+
+    const baseUrl = `${req.protocol}://${req.get('host')}/`;
+
+    // 4️⃣ Merge Everything
+    const formattedChapters = chapters.map((chapter) => {
+      const mcqData = mcqCounts.find(
+        (m) => m._id.toString() === chapter._id.toString()
+      );
+
+      const ratingData = ratings.find(
+        (r) => r._id.toString() === chapter._id.toString()
+      );
+
+      return {
+        chapterId: chapter._id,
+        chapterName: chapter.name,
+        chapterImage: chapter.image ? `${baseUrl}${chapter.image}` : null,
+        totalMcq: mcqData ? mcqData.totalMcq : 0,
+        rating: ratingData ? Number(ratingData.avgRating.toFixed(1)) : 0,
+        order: chapter.order,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      count: formattedChapters.length,
+      data: formattedChapters,
+    });
+  } catch (error) {
+    console.error('Get Chapters By Topic Error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 export const getMcqsByChapter = async (req, res) => {
   try {
