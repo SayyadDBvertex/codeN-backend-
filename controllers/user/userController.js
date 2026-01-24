@@ -25,12 +25,10 @@ import VideoProgress from '../../models/admin/Video/videoprogess.js';
 
 export const loginByGoogle = async (req, res, next) => {
   try {
-    const { access_token } = req.body;
+    const { token } = req.body;
 
-    if (!access_token) {
-      return res
-        .status(400)
-        .json({ message: 'Google access token is required' });
+    if (!token) {
+      return res.status(400).json({ message: 'Google ID token is required' });
     }
 
     // ✅ REAL TOKEN VERIFY
@@ -39,7 +37,7 @@ export const loginByGoogle = async (req, res, next) => {
 
     try {
       const ticket = await client.verifyIdToken({
-        idToken: access_token,
+        idToken: token,
         audience: process.env.GOOGLE_CLIENT_ID,
       });
 
@@ -55,6 +53,7 @@ export const loginByGoogle = async (req, res, next) => {
     const email = payload.email.toLowerCase().trim();
     const googleId = payload.sub;
     const name = payload.name || 'Google User';
+    const picture = payload.picture || null; // 👈 GOOGLE PROFILE IMAGE
 
     let user = await UserModel.findOne({ email });
 
@@ -63,12 +62,17 @@ export const loginByGoogle = async (req, res, next) => {
         name,
         email,
         googleId,
+        profileImage: picture,
         signUpBy: 'google',
         isEmailVerified: true,
         role: 'user',
       });
     } else {
       if (!user.googleId) user.googleId = googleId;
+
+      if (!user.profileImage && picture) {
+        user.profileImage = picture; // 👈 ADD THIS
+      }
       if (user.signUpBy === 'email' && !user.isEmailVerified) {
         user.isEmailVerified = true;
         user.signUpBy = 'google';

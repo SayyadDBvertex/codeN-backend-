@@ -3,6 +3,14 @@ import generateToken from '../../config/generateToken.js';
 import PageModel from '../../models/admin/pageModel.js';
 import UserModel from '../../models/user/userModel.js';
 import Rating from '../../models/admin/Rating.js';
+import User from '../../models/user/userModel.js';
+import Tag from '../../models/admin/Tags/tag.model.js';
+import Test from '../../models/admin/Test/testModel.js';
+import Video from '../../models/admin/Video/video.model.js';
+import Course from '../../models/admin/Course/course.model.js';
+import Chapter from '../../models/admin/Chapter/chapter.model.js';
+import Subject from '../../models/admin/Subject/subject.model.js';
+import Payment from '../../models/admin/Transaction/Transaction.js';
 
 export const loginAdmin = async (req, res) => {
   try {
@@ -258,4 +266,33 @@ export const getAllRatings = async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+// controllers/admin/dashboard.controller.js
+export const getDashboardStats = async (req, res) => {
+  const [users, tags, tests, videos, courses, chapters, subjects, payments] =
+    await Promise.all([
+      User.countDocuments({ role: 'user' }),
+      Tag.countDocuments(),
+      Test.countDocuments(),
+      Video.countDocuments(),
+      Course.countDocuments(),
+      Chapter.countDocuments(),
+      Subject.countDocuments(),
+      Payment.countDocuments(),
+    ]);
+
+  res.json({
+    success: true,
+    data: {
+      users,
+      tags,
+      tests,
+      videos,
+      courses,
+      chapters,
+      subjects,
+      payments,
+    },
+  });
 };
