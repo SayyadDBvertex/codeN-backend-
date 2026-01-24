@@ -46,13 +46,14 @@ export const loginAdmin = async (req, res) => {
       });
     }
 
-    const newToken = generateToken(admin._id);
-    admin.token = newToken;
+    const { accessToken } = generateToken(admin._id);
+
+    admin.token = accessToken;
     admin.lastLogin = new Date(); // 🔹 FIX 3
     await admin.save();
     res.status(200).json({
       success: true,
-      token: newToken,
+      token: accessToken,
       data: {
         id: admin._id,
         name: admin.name,
