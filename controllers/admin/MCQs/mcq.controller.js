@@ -12,6 +12,7 @@ import path from 'path';
  * @route   POST /api/admin/mcqs
  */
 export const createMCQ = async (req, res, next) => {
+  console.log('UPLOADED FILES:', req.files);
   try {
     const {
       chapterId,
@@ -90,14 +91,15 @@ export const createMCQ = async (req, res, next) => {
       tagId: tagId || null,
       question: {
         text: parsedQuestion.text || '',
-        images: [...(parsedQuestion.images || []), ...questionImages],
+        images: questionImages,
       },
       options: finalOptions,
       correctAnswer,
       explanation: {
         text: parsedExplanation?.text || '',
-        images: [...(parsedExplanation?.images || []), ...explanationImages],
+        images: explanationImages,
       },
+
       difficulty: difficulty || 'medium',
       marks: marks || 4,
       negativeMarks: negativeMarks || 1,

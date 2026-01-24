@@ -139,14 +139,17 @@ import {
   getMe,
   getCourseListSimple,
   logout,
-   updateVideoProgress,
-  getDailyMCQ
+  updateVideoProgress,
+  getDailyMCQ,
 } from '../../controllers/user/userController.js';
 
 import { getAboutUs } from '../../controllers/admin/AboutUs/aboutus.controller.js';
 import { getPrivacyPolicy } from '../../controllers/admin/PrivacyPolicy/privacy.controller.js';
 import { getTerms } from '../../controllers/admin/Terms&Condition/terms.controller.js';
-import { getChapterBySubSubjectId } from '../../controllers/admin/Chapter/chapter.controller.js';
+import {
+  getChapterBySubSubjectId,
+  getChapterByIdForUser,
+} from '../../controllers/admin/Chapter/chapter.controller.js';
 
 import uploadProfile from '../../middleware/uploaduserProfile.js';
 import { protect } from '../../middleware/authMiddleware.js';
@@ -162,7 +165,7 @@ import {
   getSingleTopicForUser,
   getTopicsWithChaptersForUser,
   getTopicVideosForUser,
-  getCustomPracticeMCQs
+  getCustomPracticeMCQs,
 } from '../../controllers/user/userController.js';
 
 import { testLimiter, otpLimiter } from '../../middleware/limiter.js';
@@ -403,7 +406,7 @@ userRouter.get('/video/:videoId', getVideoData);
  *         description: List of videos
  */
 userRouter.get('/chapter/:chapterId/video', getChapterVideoByChapterId);
-
+userRouter.get('/chapter/:chapterId', getChapterByIdForUser);
 /**
  * @swagger
  * /api/users/profile:
@@ -517,9 +520,9 @@ userRouter.get('/topics', getAllTopicsForUser);
 userRouter.get('/topics/chapter/:chapterId', getTopicsByChapterForUser);
 userRouter.get('/topics/:id', getSingleTopicForUser);
 userRouter.get('/get-chapters/:subSubjectId', getChapterBySubSubjectId);
-userRouter.get('/topic-videos/:topicId', protect,getTopicVideosForUser);
+userRouter.get('/topic-videos/:topicId', protect, getTopicVideosForUser);
 userRouter.post('/update-progress', protect, updateVideoProgress);
-userRouter.post('/generate-custom-test',getCustomPracticeMCQs);
+userRouter.post('/generate-custom-test', getCustomPracticeMCQs);
 userRouter.get('/daily-mcq', getDailyMCQ);
 
 /* ================= MCQ / TEST ================= */
@@ -664,5 +667,43 @@ userRouter.get('/list', getCourseListSimple);
 
 userRouter.get('/profile/:id', protect, getUserData);
 // userRouter.get('/:id', protect, getUserData);
+
+/* ================= RATING ================= */
+
+/**
+ * @swagger
+ * /api/users/rating:
+ *   post:
+ *     summary: Post or update rating for a video
+ *     tags: [Videos]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - rating
+ *               - videoId
+ *             properties:
+ *               rating:
+ *                 type: number
+ *                 example: 4
+ *               review:
+ *                 type: string
+ *                 example: "Very helpful video"
+ *               videoId:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Rating submitted successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
+userRouter.post('/rating', protect, postRating);
 
 export default userRouter;

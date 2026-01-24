@@ -1704,6 +1704,7 @@ export const postRating = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 export const getAllSubSubjectsForUser = async (req, res) => {
   try {
     const { courseId } = req.query; // Course ke base par filter zaroori hai

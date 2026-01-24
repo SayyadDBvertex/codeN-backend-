@@ -393,3 +393,41 @@ export const getChapterBySubSubjectId = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getChapterByIdForUser = async (req, res) => {
+  try {
+    const { chapterId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(chapterId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid chapterId',
+      });
+    }
+
+    const chapter = await Chapter.findOne({
+      _id: chapterId,
+      status: 'active',
+    })
+      .select('name description order topicId subSubjectId')
+      .populate('topicId', 'name')
+      .populate('subSubjectId', 'name');
+
+    if (!chapter) {
+      return res.status(404).json({
+        success: false,
+        message: 'Chapter not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: chapter,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
