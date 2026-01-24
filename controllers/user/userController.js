@@ -1497,7 +1497,7 @@ export const getChaptersByTopicForUser = async (req, res) => {
       },
     ]);
 
-    const baseUrl = `${req.protocol}://${req.get('host')}/`;
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
 
     // 4️⃣ Merge Everything
     const formattedChapters = chapters.map((chapter) => {

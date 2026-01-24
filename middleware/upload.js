@@ -78,7 +78,8 @@ const mcqImageDir = 'uploads/mcq-images'; // New folder for MCQs
 
 const storage = multer.diskStorage({
   destination(req, file, cb) {
-    if (req.baseUrl && req.baseUrl.includes('chapters')) {
+    // if (req.baseUrl && req.baseUrl.includes('chapters')) {
+    if (req.baseUrl?.includes('/chapters')) {
       cb(null, chapterImageDir);
     } else if (req.baseUrl && req.baseUrl.includes('mcqs')) {
       cb(null, mcqImageDir); // ✅ MCQ images saved here
