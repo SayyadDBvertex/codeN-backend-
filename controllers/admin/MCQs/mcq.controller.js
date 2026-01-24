@@ -175,31 +175,61 @@ export const getMCQById = async (req, res, next) => {
 };
 
 /**
- * @desc    Update MCQ (Handles new image uploads and hierarchy changes)
+ * @desc    Update MCQ (Images + Hierarchy + Validation)
  * @route   PUT /api/admin/mcqs/:id
  */
 export const updateMCQ = async (req, res, next) => {
   try {
     const mcq = await MCQ.findById(req.params.id);
-    if (!mcq)
+    if (!mcq) {
       return res.status(404).json({ success: false, message: 'MCQ not found' });
+    }
 
-    const { chapterId, tagId, mode, question, options, explanation, ...rest } =
-      req.body;
+    const {
+      chapterId,
+      tagId,
+      mode,
+      question,
+      options,
+      explanation,
+      correctAnswer,
+      status,
+      ...rest
+    } = req.body;
 
     const files = req.files || {};
 
-    // ✅ Validate & update mode
-    if (mode) {
+    /* =======================
+       MODE VALIDATION
+    ======================= */
+    if (mode !== undefined) {
       if (!['regular', 'exam'].includes(mode)) {
         return res
           .status(400)
-          .json({ success: false, message: 'Invalid mode' });
+          .json({
+            success: false,
+            message: 'Invalid mode (regular/exam only)',
+          });
       }
       mcq.mode = mode;
     }
 
-    // 🔁 Hierarchy change logic (safe + validated)
+    /* =======================
+       STATUS VALIDATION
+    ======================= */
+    if (status !== undefined) {
+      if (!['active', 'inactive'].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status (active/inactive only)',
+        });
+      }
+      mcq.status = status;
+    }
+
+    /* =======================
+       HIERARCHY CHANGE
+    ======================= */
     if (chapterId && chapterId !== mcq.chapterId.toString()) {
       const ch = await Chapter.findById(chapterId);
       if (!ch)
@@ -232,12 +262,24 @@ export const updateMCQ = async (req, res, next) => {
       mcq.chapterId = chapterId;
     }
 
-    // ✅ Update tag
-    if (tagId !== undefined) mcq.tagId = tagId || null;
+    /* =======================
+       TAG
+    ======================= */
+    if (tagId !== undefined) {
+      mcq.tagId = tagId || null;
+    }
 
-    // ✅ Update Question
+    /* =======================
+       QUESTION UPDATE
+    ======================= */
     if (question) {
       const q = typeof question === 'string' ? JSON.parse(question) : question;
+
+      // Replace old images if flag sent
+      if (q.replaceImages === true) {
+        mcq.question.images.forEach(deleteFile);
+        mcq.question.images = [];
+      }
 
       const newImgs = files['questionImages']
         ? files['questionImages'].map(
@@ -246,27 +288,61 @@ export const updateMCQ = async (req, res, next) => {
         : [];
 
       mcq.question = {
-        text: q.text || '',
-        images: [...(q.images || []), ...newImgs],
+        text: q.text || mcq.question.text,
+        images: [...(q.images || mcq.question.images), ...newImgs],
       };
     }
 
-    // ✅ Update Options
+    /* =======================
+       OPTIONS UPDATE
+    ======================= */
     if (options) {
       const opts = typeof options === 'string' ? JSON.parse(options) : options;
+
+      if (opts.length !== 4) {
+        return res.status(400).json({
+          success: false,
+          message: 'Exactly 4 options are required',
+        });
+      }
+
+      // delete old option images if replaced
+      opts.forEach((opt, i) => {
+        if (opt.replaceImage === true && mcq.options[i]?.image) {
+          deleteFile(mcq.options[i].image);
+        }
+      });
 
       mcq.options = opts.map((opt, index) => ({
         text: opt.text || '',
         image: files[`optionImage_${index}`]
           ? `/uploads/mcq-images/${files[`optionImage_${index}`][0].filename}`
-          : opt.image || null,
+          : opt.image || mcq.options[index]?.image || null,
       }));
+
+      // revalidate correctAnswer
+      if (
+        mcq.correctAnswer !== undefined &&
+        mcq.correctAnswer > opts.length - 1
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: 'correctAnswer index out of range after options update',
+        });
+      }
     }
 
-    // ✅ Update Explanation
+    /* =======================
+       EXPLANATION UPDATE
+    ======================= */
     if (explanation) {
       const exp =
         typeof explanation === 'string' ? JSON.parse(explanation) : explanation;
+
+      if (exp.replaceImages === true) {
+        mcq.explanation.images.forEach(deleteFile);
+        mcq.explanation.images = [];
+      }
 
       const newExpImgs = files['explanationImages']
         ? files['explanationImages'].map(
@@ -275,14 +351,16 @@ export const updateMCQ = async (req, res, next) => {
         : [];
 
       mcq.explanation = {
-        text: exp.text || '',
-        images: [...(exp.images || []), ...newExpImgs],
+        text: exp.text || mcq.explanation.text,
+        images: [...(exp.images || mcq.explanation.images), ...newExpImgs],
       };
     }
 
-    // ✅ Validate correctAnswer if provided
-    if (rest.correctAnswer !== undefined) {
-      const ans = Number(rest.correctAnswer);
+    /* =======================
+       CORRECT ANSWER
+    ======================= */
+    if (correctAnswer !== undefined) {
+      const ans = Number(correctAnswer);
       if (![0, 1, 2, 3].includes(ans)) {
         return res.status(400).json({
           success: false,
@@ -290,10 +368,11 @@ export const updateMCQ = async (req, res, next) => {
         });
       }
       mcq.correctAnswer = ans;
-      delete rest.correctAnswer;
     }
 
-    // ✅ Apply remaining simple fields
+    /* =======================
+       SIMPLE FIELDS
+    ======================= */
     Object.assign(mcq, rest);
     mcq.updatedBy = req.admin._id;
 
@@ -313,11 +392,29 @@ export const updateMCQ = async (req, res, next) => {
  * @desc    Delete MCQ (Permanent)
  * @route   DELETE /api/admin/mcqs/:id
  */
+const deleteFile = (filePath) => {
+  if (filePath && fs.existsSync(path.join(process.cwd(), filePath))) {
+    fs.unlinkSync(path.join(process.cwd(), filePath));
+  }
+};
+
 export const deleteMCQ = async (req, res, next) => {
   try {
-    const mcq = await MCQ.findByIdAndDelete(req.params.id);
+    const mcq = await MCQ.findById(req.params.id);
     if (!mcq)
       return res.status(404).json({ success: false, message: 'MCQ not found' });
+
+    // 🧹 Question images
+    mcq.question?.images?.forEach(deleteFile);
+
+    // 🧹 Option images
+    mcq.options?.forEach((opt) => deleteFile(opt.image));
+
+    // 🧹 Explanation images
+    mcq.explanation?.images?.forEach(deleteFile);
+
+    await mcq.deleteOne();
+
     res.status(200).json({ success: true, message: 'MCQ permanently deleted' });
   } catch (error) {
     next(error);
