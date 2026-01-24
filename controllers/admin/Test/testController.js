@@ -217,29 +217,76 @@ export const getCourseFilters = async (req, res) => {
  * @desc   Get All Tests (with pagination)
  * @route  GET /api/admin/tests
  */
+// export const getAllTests = async (req, res) => {
+//   try {
+//     const { category, status, testMode, page = 1, limit = 10 } = req.query;
+
+//     const filter = {};
+//     if (category) filter.category = category;
+//     if (status) filter.status = status;
+//     if (testMode) filter.testMode = testMode;
+
+//     const skip = (page - 1) * limit;
+
+//     const tests = await Test.find(filter)
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(Number(limit));
+
+//     const total = await Test.countDocuments(filter);
+
+//     res.json({
+//       success: true,
+//       data: tests,
+//       pagination: {
+//         total,
+//         pages: Math.ceil(total / limit),
+//       },
+//     });
+//   } catch (error) {
+//     console.error('Get Tests Error:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Failed to fetch tests',
+//     });
+//   }
+// };
 export const getAllTests = async (req, res) => {
   try {
-    const { category, status, testMode, page = 1, limit = 10 } = req.query;
+    const {
+      category,
+      status,
+      testMode,
+      courseId,
+      page = 1,
+      limit = 10,
+    } = req.query;
 
     const filter = {};
     if (category) filter.category = category;
     if (status) filter.status = status;
     if (testMode) filter.testMode = testMode;
+    if (courseId) filter.courseId = courseId; // ✅ added
 
-    const skip = (page - 1) * limit;
+    const skip = (page - 1) * Number(limit);
 
     const tests = await Test.find(filter)
+      .select(
+        'testTitle category testMode mcqLimit timeLimit status createdAt updatedAt courseId'
+      )
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .lean();
 
     const total = await Test.countDocuments(filter);
 
     res.json({
       success: true,
-      data: tests,
+      tests, // 🔥 keep same key as your frontend
       pagination: {
         total,
+        page: Number(page),
         pages: Math.ceil(total / limit),
       },
     });

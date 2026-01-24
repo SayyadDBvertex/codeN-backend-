@@ -1118,13 +1118,13 @@ export const getSubSubjectsBySubject = async (req, res) => {
           topicId: { $in: topicIds },
           status: 'active',
         });
-        const VideoCount = totalVideos;
+        const videoCount = totalVideos;
         return {
           _id: item._id,
           name: item.name,
           order: item.order,
           image: item.image ? `${baseUrl}${item.image}` : null,
-          VideoCount, // 👈 NEW FIELD
+          videoCount, // 👈 NEW FIELD
         };
       })
     );

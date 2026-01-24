@@ -34,7 +34,9 @@ export const getAvailableTests = async (req, res) => {
     if (courseId) filter.courseId = courseId;
 
     const tests = await Test.find(filter)
-      .select('_id testTitle category testMode mcqLimit timeLimit')
+      .select(
+        '_id testTitle category testMode mcqLimit timeLimit createdAt updatedAt'
+      )
       .sort({ createdAt: -1 });
 
     res.json({ success: true, tests });

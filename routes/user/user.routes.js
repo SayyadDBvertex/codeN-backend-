@@ -509,7 +509,7 @@ userRouter.get('/get-all-subjects', getAllsubjects);
  *         required: true
  *         schema: { type: string }
  */
-userRouter.get('/get-sub-subjects', getSubSubjectsBySubject);
+userRouter.get('/sub-subjects', getSubSubjectsBySubject);
 
 userRouter.get(
   '/topics-with-chapters/sub-subject/:subSubjectId',
