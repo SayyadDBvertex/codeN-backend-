@@ -33,7 +33,7 @@ const mcqSchema = new mongoose.Schema(
       required: true,
     },
     tagId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tag', default: null },
-
+    tags: [{ type: String }],
     // --- mode removed from schema ---
 
     question: {

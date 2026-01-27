@@ -153,29 +153,43 @@ export const getCourseFilters = async (req, res) => {
  * @desc   Get All Tests (with pagination)
  * @route  GET /api/admin/tests
  */
+
 // export const getAllTests = async (req, res) => {
 //   try {
-//     const { category, status, testMode, page = 1, limit = 10 } = req.query;
+//     const {
+//       category,
+//       status,
+//       testMode,
+//       courseId,
+//       page = 1,
+//       limit = 10,
+//     } = req.query;
 
 //     const filter = {};
 //     if (category) filter.category = category;
 //     if (status) filter.status = status;
 //     if (testMode) filter.testMode = testMode;
+//     if (courseId) filter.courseId = courseId; // ✅ added
 
-//     const skip = (page - 1) * limit;
+//     const skip = (page - 1) * Number(limit);
 
 //     const tests = await Test.find(filter)
+//       .select(
+//         'testTitle category testMode mcqLimit timeLimit status createdAt updatedAt courseId'
+//       )
 //       .sort({ createdAt: -1 })
 //       .skip(skip)
-//       .limit(Number(limit));
+//       .limit(Number(limit))
+//       .lean();
 
 //     const total = await Test.countDocuments(filter);
 
 //     res.json({
 //       success: true,
-//       data: tests,
+//       tests, // 🔥 keep same key as your frontend
 //       pagination: {
 //         total,
+//         page: Number(page),
 //         pages: Math.ceil(total / limit),
 //       },
 //     });
@@ -202,14 +216,15 @@ export const getAllTests = async (req, res) => {
     if (category) filter.category = category;
     if (status) filter.status = status;
     if (testMode) filter.testMode = testMode;
-    if (courseId) filter.courseId = courseId; // ✅ added
+    if (courseId) filter.courseId = courseId;
 
     const skip = (page - 1) * Number(limit);
 
     const tests = await Test.find(filter)
       .select(
-        'testTitle category testMode mcqLimit timeLimit status createdAt updatedAt courseId'
+        'testTitle month academicYear category testMode mcqLimit timeLimit status createdAt updatedAt courseId'
       )
+
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit))
@@ -217,9 +232,20 @@ export const getAllTests = async (req, res) => {
 
     const total = await Test.countDocuments(filter);
 
+    // 🔥 ADD MCQ COUNTS
+    const testsWithCounts = await Promise.all(
+      tests.map(async (t) => {
+        const count = await MCQ.countDocuments({ testId: t._id });
+        return {
+          ...t,
+          totalQuestions: count,
+        };
+      })
+    );
+
     res.json({
       success: true,
-      tests, // 🔥 keep same key as your frontend
+      tests: testsWithCounts,
       pagination: {
         total,
         page: Number(page),
@@ -239,6 +265,32 @@ export const getAllTests = async (req, res) => {
  * @desc   Get Single Test
  * @route  GET /api/admin/tests/:id
  */
+// export const getSingleTest = async (req, res) => {
+//   try {
+//     const test = await Test.findById(req.params.id).populate(
+//       'courseId',
+//       'name'
+//     );
+
+//     if (!test) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Test not found',
+//       });
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       data: test,
+//     });
+//   } catch (error) {
+//     console.error('Get Single Test Error:', error);
+//     return res.status(500).json({
+//       success: false,
+//       message: 'Failed to fetch test',
+//     });
+//   }
+// };
 export const getSingleTest = async (req, res) => {
   try {
     const test = await Test.findById(req.params.id).populate(
@@ -253,9 +305,15 @@ export const getSingleTest = async (req, res) => {
       });
     }
 
+    // 🔥 ADD MCQ COUNT
+    const count = await MCQ.countDocuments({ testId: test._id });
+
     return res.status(200).json({
       success: true,
-      data: test,
+      data: {
+        ...test.toObject(),
+        totalQuestions: count,
+      },
     });
   } catch (error) {
     console.error('Get Single Test Error:', error);
@@ -292,6 +350,77 @@ export const deleteTest = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to delete test',
+    });
+  }
+};
+
+export const updateTest = async (req, res) => {
+  try {
+    const {
+      testTitle,
+      month,
+      academicYear,
+      testMode,
+      mcqLimit,
+      timeLimit,
+      description,
+      status,
+    } = req.body;
+
+    // 🔥 BASIC VALIDATION
+    if (!testTitle || !month || !academicYear) {
+      return res.status(400).json({
+        success: false,
+        message: 'Test Title, Month and Academic Year are required',
+      });
+    }
+
+    if (!mcqLimit || mcqLimit < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'MCQ Limit must be greater than 0',
+      });
+    }
+
+    if (testMode === 'exam' && (!timeLimit || timeLimit < 1)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Time limit is required for Exam Mode',
+      });
+    }
+
+    const updatedTest = await Test.findByIdAndUpdate(
+      req.params.id,
+      {
+        testTitle,
+        month, // 🔥 important
+        academicYear, // 🔥 important
+        testMode,
+        mcqLimit,
+        timeLimit: testMode === 'exam' ? timeLimit : null,
+        description: description || '',
+        status,
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedTest) {
+      return res.status(404).json({
+        success: false,
+        message: 'Test not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Test updated successfully',
+      data: updatedTest,
+    });
+  } catch (error) {
+    console.error('Update Test Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update test',
     });
   }
 };

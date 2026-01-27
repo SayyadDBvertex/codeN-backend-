@@ -4,6 +4,7 @@ import {
   getCourseFilters,
   getAllTests,
   getSingleTest,
+  updateTest,
   deleteTest,
 } from '../../../controllers/admin/Test/testController.js';
 
@@ -15,6 +16,7 @@ router.get('/', protect, adminOnly, getAllTests);
 router.get('/filters/:courseId', protect, adminOnly, getCourseFilters);
 router.post('/create', protect, adminOnly, createTest);
 router.get('/:id', protect, adminOnly, getSingleTest);
+router.put('/:id', protect, adminOnly, updateTest);
 router.delete('/:id', protect, adminOnly, deleteTest);
 
 export default router;

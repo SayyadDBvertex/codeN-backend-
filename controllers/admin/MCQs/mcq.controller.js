@@ -5,7 +5,7 @@ import Chapter from '../../../models/admin/Chapter/chapter.model.js';
 import Topic from '../../../models/admin/Topic/topic.model.js';
 import SubSubject from '../../../models/admin/Sub-subject/subSubject.model.js';
 import Subject from '../../../models/admin/Subject/subject.model.js';
-// import Tag from '../../../models/admin/Tags/tag.model.js';
+import Tag from '../../../models/admin/Tags/tag.model.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -57,6 +57,17 @@ export const createMCQ = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: 'Test not found. Please select a valid test.',
+      });
+    }
+    // 🔥 MCQ LIMIT CHECK
+    const test = await Test.findById(testId).select('mcqLimit').lean();
+
+    const currentCount = await MCQ.countDocuments({ testId });
+
+    if (currentCount >= Number(test.mcqLimit || 0)) {
+      return res.status(400).json({
+        success: false,
+        message: `MCQ limit reached. This test allows only ${test.mcqLimit} MCQs.`,
       });
     }
 
@@ -131,6 +142,17 @@ export const createMCQ = async (req, res, next) => {
         message: 'Invalid correctAnswer index (0–3 only)',
       });
     }
+    // 🔥 BUILD TAGS ARRAY
+    const tags = [];
+
+    if (tagId) {
+      const tag = await Tag.findById(tagId).select('name').lean();
+      if (tag) tags.push(tag.name);
+    }
+
+    if (previousYearTag === 'true' || previousYearTag === true) {
+      tags.push('Previous Year');
+    }
 
     // Create MCQ (testId validated above)
     const mcq = await MCQ.create({
@@ -141,6 +163,7 @@ export const createMCQ = async (req, res, next) => {
       topicId: topic._id,
       chapterId,
       tagId: tagId || null,
+      tags,
       question: {
         text: parsedQuestion.text || '',
         images: questionImages,
@@ -242,9 +265,7 @@ export const getAllMCQs = async (req, res, next) => {
         success: true,
         count: 0,
         format: 'test-wise-grouped',
-        data: [
-          buildGroup(testId, test.testTitle || 'Unknown Test', []),
-        ],
+        data: [buildGroup(testId, test.testTitle || 'Unknown Test', [])],
       });
     }
 
@@ -254,7 +275,10 @@ export const getAllMCQs = async (req, res, next) => {
     for (const mcq of mcqs) {
       const t = mcq.testId;
       const key = t?._id?.toString() ?? 'unassigned';
-      const name = t?.testTitle || t?.name || (key === 'unassigned' ? 'Unassigned' : 'Unknown Test');
+      const name =
+        t?.testTitle ||
+        t?.name ||
+        (key === 'unassigned' ? 'Unassigned' : 'Unknown Test');
 
       if (!grouped[key]) {
         grouped[key] = {
