@@ -65,6 +65,7 @@ export const loginByGoogle = async (req, res, next) => {
         profileImage: picture,
         signUpBy: 'google',
         isEmailVerified: true,
+        isMobileVerified: false,
         role: 'user',
       });
     } else {
@@ -352,6 +353,17 @@ export const register = async (req, res, next) => {
 
     const normalizedEmail = email.toLowerCase().trim();
     const existingUser = await UserModel.findOne({ email: normalizedEmail });
+    if (mobile) {
+      const mobileExists = await UserModel.findOne({ mobile });
+      if (mobileExists) {
+        if (session.inTransaction()) await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({
+          success: false,
+          message: 'User already exists with this mobile number.',
+        });
+      }
+    }
 
     if (existingUser) {
       if (session.inTransaction()) await session.abortTransaction();
@@ -362,25 +374,26 @@ export const register = async (req, res, next) => {
       });
     }
 
-    // const hashedPassword = await bcrypt.hash(password, 10);
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const emailOtp = generateOtp();
+    const mobileOtp = generateOtp();
 
-    // 8️⃣ Create User
     const [user] = await UserModel.create(
       [
         {
           name,
           email: normalizedEmail,
-          password: password,
-          otp,
+          password,
+          otp: emailOtp,
           otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-          mobile,
-          address,
 
-          countryId, // 👈 ONLY HERE
+          mobile,
+          mobileOtp,
+          mobileOtpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+
+          address,
+          countryId,
           stateId,
           cityId,
-
           collegeId: college._id,
           classId: finalClassId,
           admissionYear,
@@ -394,7 +407,18 @@ export const register = async (req, res, next) => {
     // 9️⃣ Commit and Cleanup
     await session.commitTransaction();
     session.endSession();
-    await sendFormEmail(normalizedEmail, otp);
+    await sendFormEmail(normalizedEmail, emailOtp);
+
+    // 🔽 TEMP: CONSOLE MOBILE OTP
+    console.log(`📱 Mobile OTP for ${mobile}: ${mobileOtp}`);
+
+    /*
+==============================
+ HERE PAID SMS SERVICE CODE AAYEGA
+ e.g. Twilio / MSG91 / Fast2SMS
+==============================
+await sendSms(mobile, `Your OTP is ${mobileOtp}`);
+*/
 
     // 🔟 Populate for Response
     const populatedUser = await UserModel.findById(user._id)
@@ -486,30 +510,81 @@ export const verifyEmail = async (req, res, next) => {
   }
 };
 
-export const login = async (req, res, next) => {
+export const verifyMobile = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    const normalizedEmail = email.toLowerCase().trim();
+    const { mobile, otp } = req.body;
 
-    // ✅ ADD: basic validation
-    if (!email || !password) {
-      return res.status(400).json({
-        message: 'Email and password are required',
-      });
+    if (!mobile || !otp) {
+      return res.status(400).json({ message: 'Mobile and OTP are required' });
     }
 
-    // ✅ Ensure password is selected
-    const user = await UserModel.findOne({ email: normalizedEmail }).select(
-      '+password'
-    );
+    const user = await UserModel.findOne({ mobile });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (user.status !== 'active') {
-      return res.status(403).json({
-        message: 'Account is blocked or inactive',
+    if (user.isMobileVerified) {
+      return res.status(400).json({ message: 'Mobile already verified' });
+    }
+
+    if (
+      !user.mobileOtp ||
+      user.mobileOtp !== otp ||
+      !user.mobileOtpExpiresAt ||
+      user.mobileOtpExpiresAt.getTime() < Date.now()
+    ) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    user.isMobileVerified = true;
+    user.mobileOtp = null;
+    user.mobileOtpExpiresAt = null;
+    await user.save();
+
+    return res.json({ message: 'Mobile verified successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const login = async (req, res, next) => {
+  try {
+    const { email, mobile, password } = req.body;
+    if (email && mobile) {
+      return res.status(400).json({
+        message: 'Use either email or mobile, not both',
       });
+    }
+
+    if ((!email && !mobile) || !password) {
+      return res.status(400).json({
+        message: 'Email or Mobile and password are required',
+      });
+    }
+
+    let user;
+
+    if (email) {
+      const normalizedEmail = email.toLowerCase().trim();
+      user = await UserModel.findOne({ email: normalizedEmail }).select(
+        '+password'
+      );
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      if (!user.isEmailVerified)
+        return res.status(401).json({ message: 'Email not verified' });
+    }
+
+    if (mobile) {
+      user = await UserModel.findOne({ mobile }).select('+password');
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      if (!user.isMobileVerified)
+        return res.status(401).json({ message: 'Mobile not verified' });
+    }
+
+    if (user.status !== 'active') {
+      return res
+        .status(403)
+        .json({ message: 'Account is blocked or inactive' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -517,27 +592,21 @@ export const login = async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    if (!user.isEmailVerified) {
-      return res.status(401).json({ message: 'Email not verified' });
-    }
-
-    // const token = generateToken(user._id);
-    // user.refreshToken = token;
     const { accessToken, refreshToken } = generateToken(user._id);
     user.refreshToken = refreshToken;
     await user.save();
 
-    // ✅ REMOVE sensitive fields
     const safeUser = user.toObject();
     delete safeUser.password;
     delete safeUser.otp;
     delete safeUser.otpExpiresAt;
+    delete safeUser.mobileOtp;
+    delete safeUser.mobileOtpExpiresAt;
     delete safeUser.refreshToken;
 
     res.json({
       message: 'Login successful',
       user: safeUser,
-      // token,
       accessToken,
       refreshToken,
     });
@@ -548,47 +617,93 @@ export const login = async (req, res, next) => {
 
 export const resendOtp = async (req, res, next) => {
   try {
-    const { email } = req.body;
-    const normalizedEmail = email.toLowerCase().trim();
+    const { email, mobile } = req.body;
 
-    // ✅ ADD: basic validation
-    if (!email) {
+    // 1️⃣ Input validation
+    if (!email && !mobile) {
       return res.status(400).json({
-        message: 'Email is required',
+        message: 'Email or mobile is required',
       });
     }
 
-    const user = await UserModel.findOne({ email: normalizedEmail });
-    if (!user) {
-      return res
-        .status(200)
-        .json({ message: 'If this email exists, an OTP has been sent' });
+    let user = null;
+    let mode = null; // "email" | "mobile"
+
+    // 2️⃣ Find user by email or mobile
+    if (email) {
+      const normalizedEmail = email.toLowerCase().trim();
+      user = await UserModel.findOne({ email: normalizedEmail });
+      mode = 'email';
     }
 
-    if (user.isEmailVerified) {
+    if (!user && mobile) {
+      user = await UserModel.findOne({ mobile });
+      mode = 'mobile';
+    }
+
+    // 3️⃣ Anti user-enumeration
+    if (!user) {
+      return res.status(200).json({
+        message: 'If this account exists, an OTP has been sent',
+      });
+    }
+
+    // 4️⃣ Already verified checks (mode-wise)
+    if (mode === 'email' && user.isEmailVerified) {
       return res.status(400).json({
         message: 'Email already verified',
       });
     }
 
-    // ✅ ADD: OTP resend cooldown (anti-spam)
-    if (
-      user.otpExpiresAt &&
-      user.otpExpiresAt.getTime() - Date.now() > 9 * 60 * 1000
-    ) {
-      return res.status(429).json({
-        message: 'Please wait before requesting another OTP',
+    if (mode === 'mobile' && user.isMobileVerified) {
+      return res.status(400).json({
+        message: 'Mobile already verified',
       });
     }
 
-    const otp = generateOtp();
-    user.otp = otp;
+    // 5️⃣ Cooldown (1 minute)
+    const now = Date.now();
+    if (user.otpExpiresAt && user.otpExpiresAt > now - 60 * 1000) {
+      return res.status(429).json({
+        message: 'Please wait 1 minute before requesting another OTP',
+      });
+    }
+
+    // 6️⃣ Generate OTPs
+    const emailOtp = generateOtp();
+    const mobileOtp = generateOtp();
+
+    // 7️⃣ Save OTPs
+    user.otp = emailOtp;
     user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    await sendFormEmail(email, otp);
+    user.mobileOtp = mobileOtp;
+    user.mobileOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    // 8️⃣ Send based on mode
+    if (mode === 'email') {
+      await sendFormEmail(user.email, emailOtp);
+    }
+
+    if (mode === 'mobile') {
+      // 🔽 TEMP: CONSOLE MOBILE OTP
+      console.log(`📱 Resent Mobile OTP for ${user.mobile}: ${mobileOtp}`);
+
+      /*
+        HERE PAID SMS CODE AAYEGA
+        await sendSms(user.mobile, `Your OTP is ${mobileOtp}`);
+      */
+    }
+
     await user.save();
 
-    res.json({ message: 'OTP resent successfully' });
+    // 9️⃣ Mode-wise response message
+    return res.json({
+      message:
+        mode === 'email'
+          ? 'Email OTP resent successfully'
+          : 'Mobile OTP resent successfully',
+    });
   } catch (error) {
     next(error);
   }
@@ -622,21 +737,31 @@ export const forgetPassword = async (req, res, next) => {
       });
     }
 
-    // ✅ ADD: OTP spam protection
-    if (
-      user.otpExpiresAt &&
-      user.otpExpiresAt.getTime() - Date.now() > 9 * 60 * 1000
-    ) {
+    const now = Date.now();
+    if (user.otpExpiresAt && user.otpExpiresAt > now - 60 * 1000) {
       return res.status(429).json({
-        message: 'Please wait before requesting another OTP',
+        message: 'Please wait 1 minute before requesting another OTP',
       });
     }
 
-    const otp = generateOtp();
-    user.otp = otp;
+    const emailOtp = generateOtp();
+    const mobileOtp = generateOtp();
+
+    user.otp = emailOtp;
     user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    await sendFormEmail(email, otp);
+    user.mobileOtp = mobileOtp;
+    user.mobileOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await sendFormEmail(user.email, emailOtp);
+
+    // 🔽 TEMP: CONSOLE MOBILE OTP
+    console.log(`📱 Resent Mobile OTP for ${user.mobile}: ${mobileOtp}`);
+
+    /*
+ HERE PAID SMS CODE AAYEGA
+*/
+
     await user.save();
 
     res.status(200).json({
@@ -702,7 +827,6 @@ export const changePassword = async (req, res, next) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = newPassword;
     user.otp = null;
     user.otpExpiresAt = null;

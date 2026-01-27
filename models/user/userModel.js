@@ -23,9 +23,12 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
+    // userModel.js mein mobile field ko is tarah update karein
     mobile: {
       type: String,
       trim: true,
+      unique: true, // Login ke liye unique hona zaroori hai
+      sparse: true, // Taaki null values par error na aaye
       default: null,
     },
 
@@ -115,14 +118,16 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    // userModel.js mein mobile field ko is tarah update karein
-    mobile: {
+    // 🔽 ADD THIS (mobile OTP)
+    mobileOtp: {
       type: String,
-      trim: true,
-      unique: true, // Login ke liye unique hona zaroori hai
-      sparse: true, // Taaki null values par error na aaye
       default: null,
     },
+    mobileOtpExpiresAt: {
+      type: Date,
+      default: null,
+    },
+
     // ... baki fields ke saath ye add karein
     isMobileVerified: {
       type: Boolean,
