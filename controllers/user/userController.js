@@ -572,7 +572,9 @@ export const login = async (req, res, next) => {
       const normalizedEmail = email.toLowerCase().trim();
       user = await UserModel.findOne({ email: normalizedEmail }).select(
         '+password'
-      );
+      ).populate('collegeId', 'name') // 🔥 College ka naam lene ke liye
+      .populate('stateId', 'name')   // 🔥 State ka naam lene ke liye
+      .populate('cityId', 'name');
       if (!user) return res.status(404).json({ message: 'User not found' });
       if (!user.isEmailVerified)
         return res.status(401).json({ message: 'Email not verified' });
@@ -885,7 +887,10 @@ export const getMe = async (req, res, next) => {
     // req.user protect middleware se aata hai
     const user = await UserModel.findById(req.user._id).select(
       '-password -otp -otpExpiresAt -refreshToken'
-    );
+    )
+     .populate('collegeId', 'name') // 🔥 College ka naam lene ke liye
+      .populate('stateId', 'name')   // 🔥 State ka naam lene ke liye
+      .populate('cityId', 'name');
 
     if (!user) {
       return res.status(404).json({
