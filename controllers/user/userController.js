@@ -2005,22 +2005,109 @@ export const buySubscription = async (req, res, next) => {
 //     res.status(500).json({ status: false, message: error.message });
 //   }
 // };
+
+export const postRating = async (req, res) => {
+  try {
+    const { rating, review, targetType, targetId } = req.body;
+    const userId = req.user._id;
+
+    // 1️⃣ Required fields check
+    if (rating === undefined || !targetType || !targetId) {
+      return res.status(400).json({
+        success: false,
+        message: 'rating, targetType and targetId are required',
+      });
+    }
+
+    // 2️⃣ Rating validation
+    const numericRating = Number(rating);
+    if (Number.isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be a number between 1 and 5',
+      });
+    }
+
+    // 3️⃣ targetType validation (MATCH SCHEMA)
+    const allowedTypes = [
+      'course',
+      'subject',
+      'sub-subject',
+      'topic',
+      'chapter',
+      'video',
+      'test',
+    ];
+
+    if (!allowedTypes.includes(targetType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid targetType',
+      });
+    }
+
+    // 4️⃣ ObjectId validation
+    if (!mongoose.Types.ObjectId.isValid(targetId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid targetId',
+      });
+    }
+
+    // 5️⃣ Upsert rating
+    const savedRating = await Rating.findOneAndUpdate(
+      { userId, targetType, targetId },
+      {
+        rating: numericRating,
+        review,
+      },
+      {
+        upsert: true,
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: 'Rating saved successfully',
+      data: savedRating,
+    });
+  } catch (error) {
+    console.error('postRating error:', error);
+
+    // 6️⃣ Duplicate key safety (edge case)
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'You have already rated this item',
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to submit rating',
+    });
+  }
+};
+
 // export const postRating = async (req, res) => {
 //   try {
-//     const { rating, review } = req.body;
-//     const userId = req.user._id; // Auth middleware se milega
+//     const { rating, review, videoId } = req.body; // videoId add kiya
+//     const userId = req.user._id;
 
-//     if (!rating) {
+//     if (!rating || !videoId) {
 //       return res
 //         .status(400)
-//         .json({ success: false, message: 'Rating is required' });
+//         .json({ success: false, message: 'Rating and VideoId are required' });
 //     }
 
-//     const newRating = await Rating.create({
-//       userId,
-//       rating,
-//       review,
-//     });
+//     // Update if already exists, else create new (Optional logic)
+//     const newRating = await Rating.findOneAndUpdate(
+//       { userId, videoId },
+//       { rating, review },
+//       { upsert: true, new: true }
+//     );
 
 //     res.status(201).json({
 //       success: true,
@@ -2031,33 +2118,6 @@ export const buySubscription = async (req, res, next) => {
 //     res.status(500).json({ success: false, message: error.message });
 //   }
 // };
-export const postRating = async (req, res) => {
-  try {
-    const { rating, review, videoId } = req.body; // videoId add kiya
-    const userId = req.user._id;
-
-    if (!rating || !videoId) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'Rating and VideoId are required' });
-    }
-
-    // Update if already exists, else create new (Optional logic)
-    const newRating = await Rating.findOneAndUpdate(
-      { userId, videoId },
-      { rating, review },
-      { upsert: true, new: true }
-    );
-
-    res.status(201).json({
-      success: true,
-      message: 'Thank you for your rating!',
-      data: newRating,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
 
 export const getAllSubSubjectsForUser = async (req, res) => {
   try {
